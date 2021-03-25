@@ -4,6 +4,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from absl import flags
+FLAGS = flags.FLAGS
+flags.DEFINE_integer(name = "depth"       , default = 28           , help = "Number of layers.")
+flags.DEFINE_integer(name = "widthFactor" , default = 10           , help = "How many times wider compared to normal ResNet.")
+flags.DEFINE_float  (name = "dropout"     , default = 0.0          , help = "Dropout rate.")
 
 class BasicUnit(nn.Module):
     def __init__(self, channels: int, dropout: float):
@@ -56,8 +61,12 @@ class Block(nn.Module):
 
 
 class WideResNet(nn.Module):
-    def __init__(self, depth: int, width_factor: int, dropout: float, in_channels: int, labels: int):
+    def __init__(self, in_channels: int, labels: int):
         super(WideResNet, self).__init__()
+
+        depth        = FLAGS.depth
+        width_factor = FLAGS.widthFactor
+        dropout      = FLAGS.dropout
 
         self.filters = [16, 1 * 16 * width_factor, 2 * 16 * width_factor, 4 * 16 * width_factor]
         self.block_depth = (depth - 4) // (3 * 2)

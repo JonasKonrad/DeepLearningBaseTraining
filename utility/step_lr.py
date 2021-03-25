@@ -1,8 +1,13 @@
+from absl import flags
+FLAGS = flags.FLAGS
+flags.DEFINE_float  (name = "learningRate", default = 0.1          , help = "Base learning rate at the start of the training.")
+
+
 class StepLR:
-    def __init__(self, optimizer, learning_rate: float, total_epochs: int):
+    def __init__(self, optimizer, total_epochs: int):
         self.optimizer = optimizer
         self.total_epochs = total_epochs
-        self.base = learning_rate
+        self.base = FLAGS.learningRate
 
     def __call__(self, epoch):
         if epoch < self.total_epochs * 3/10:
