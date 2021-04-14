@@ -46,6 +46,9 @@ class Log:
         else:
             self._eval_step(logs)
 
+    def getScalar(self, name):
+        return self.epoch_state["accuracy"] / self.epoch_state["steps"]
+
     def flush(self) -> None:
         if self.is_train:
             loss = self.epoch_state["loss"] / self.epoch_state["steps"]

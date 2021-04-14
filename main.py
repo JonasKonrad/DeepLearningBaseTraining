@@ -14,19 +14,31 @@ from utility.log import Log
 from utility.initialize import initialize
 from utility.LRScheduler import StepLR
 from utility.optimizer import SGD
-# from utility.modelSaver import modelSaver
+from utility.modelSaver import ModelSaver
 
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string (name = "logDir"      , default = "../logs"    , help = "main directory to store logs")
 flags.DEFINE_string (name = "logSubDir"   , default = "test"       , help = "subdir in logDir to store logs for this run")
-flags.DEFINE_integer(name = "epochs"      , default = 300          , help = "Total number of epochs.")
+flags.DEFINE_integer(name = "epochs"      , default = 400          , help = "Total number of epochs.")
 flags.DEFINE_bool   (name = "rndSeed"     , default = False        , help = "Whether to set rnd seed.")
+flags.DEFINE_bool   (name = "contin"    , default = True        , help = "Whether to set rnd seed.")
 
 if __name__ == "__main__":
     FLAGS(sys.argv)
 
     logDir = os.path.join(FLAGS.logDir, FLAGS.logSubDir)
+
+    if FLAGS.contin:
+        #first overwrite defaults with old parameters ..
+        with open(os.path.join(logDir, "params.json"), "r") as file:
+            flagsDict = json.load(file)
+        FLAGS._set_attributes(**flagsDict)
+        #@TODO add validation of flags here
+        #... then set overwrite old parameters with new parameters
+        FLAGS(sys.argv)
+
+
     os.makedirs(logDir, exist_ok=True)
     with open(os.path.join(logDir, "params.json"), "w") as file:
         json.dump(FLAGS.flag_values_dict(), file, indent = 4)
@@ -43,8 +55,16 @@ if __name__ == "__main__":
 
     optimizer = SGD(model.parameters())
     LRscheduler = StepLR(optimizer, FLAGS.epochs)
+    modelSaver = ModelSaver(model = model, optimizer = optimizer)
+    
+    startEpoch = 0
+    if FLAGS.contin:
+        startEpoch = modelSaver.loadModel("checkpoint.model")
+        startEpoch += 1
+        if startEpoch >= FLAGS.epochs:
+            raise RuntimeError(f"Can't cotinue model from epoch {startEpoch} to max epoch {FLAGS.epochs}.")
 
-    for epoch in range(FLAGS.epochs):
+    for epoch in range(startEpoch, FLAGS.epochs):
         model.train()
         log.train(len_dataset=len(dataset.train))
         LRscheduler(epoch)
@@ -76,7 +96,7 @@ if __name__ == "__main__":
                 log({"loss": loss.cpu(), "accuracy": correct.cpu()})
 
             log.evalEnd()
-
-
+        
+            modelSaver(epoch, log.getScalar("accuracy"))
 
     log.flush()

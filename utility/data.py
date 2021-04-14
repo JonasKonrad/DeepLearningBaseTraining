@@ -10,9 +10,9 @@ flags.DEFINE_string (name = 'dataDir'     , default = "~/.datasets", help = "mai
 flags.DEFINE_integer(name = 'batchSize'   , default = 256          , help = "batch size")
 
 
-flags.DEFINE_bool   (name = "flip"     , default = False        , help = "")
-flags.DEFINE_bool   (name = "crop"     , default = False        , help = "")
-flags.DEFINE_bool   (name = "cut"      , default = False        , help = "")
+flags.DEFINE_bool   (name = "flip"     , default = False        , help = "flip horizontally")
+flags.DEFINE_bool   (name = "crop"     , default = False        , help = "crop 32x32 padding 4")
+flags.DEFINE_bool   (name = "cut"      , default = False        , help = "cutout")
 flags.DEFINE_float(name = "cutoutProp" , default = 0.5, help = "Probability for cutout augmenation.")
 
 

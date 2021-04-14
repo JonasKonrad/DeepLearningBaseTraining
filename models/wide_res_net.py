@@ -8,7 +8,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer(name = "depth"       , default = 16           , help = "Number of layers.")
 flags.DEFINE_integer(name = "widthFactor" , default = 4           , help = "How many times wider compared to normal ResNet.")
 flags.DEFINE_float  (name = "dropout"     , default = 0.0          , help = "Dropout rate.")
-flags.DEFINE_bool  (name = "BN"           , default = False          , help = "use BN ?")
+flags.DEFINE_bool   (name = "BN"           , default = True          , help = "use BN ?")
 
 
 

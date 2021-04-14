@@ -17,3 +17,10 @@ class SGD(torch.optim.Optimizer):
     def step(self, zeroGrad: bool = True):
         self.base_optimizer.step()
         if zeroGrad: self.zero_grad()
+
+    def load_state_dict(self, state_dict):
+        super(SGD, self).load_state_dict(state_dict)
+        self.base_optimizer.__setstate__(self.__getstate__())
+
+    def state_dict(self):
+        return self.base_optimizer.state_dict()
