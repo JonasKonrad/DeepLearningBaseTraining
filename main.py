@@ -8,12 +8,13 @@ import json
 from absl import flags
 
 from models.wide_res_net import WideResNet
-from utility.smooth_cross_entropy import smooth_crossentropy
+from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.log import Log
 from utility.initialize import initialize
-from utility.step_lr import StepLR
+from utility.LRScheduler import StepLR
 from utility.optimizer import SGD
+# from utility.modelSaver import modelSaver
 
 
 FLAGS = flags.FLAGS
@@ -38,7 +39,7 @@ if __name__ == "__main__":
 
     dataset = DataLoader()
     log = Log(log_each=FLAGS.logEach, logDir = logDir)
-    model = WideResNet(in_channels=3, labels=dataset.numClasses).to(device)
+    model = WideResNet(num_classes=dataset.numClasses).to(device)
 
     optimizer = SGD(model.parameters())
     LRscheduler = StepLR(optimizer, FLAGS.epochs)

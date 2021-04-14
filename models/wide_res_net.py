@@ -1,101 +1,97 @@
-from collections import OrderedDict
-
+""" https://github.com/xternalz/WideResNet-pytorch/blob/master/wideresnet.py """
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from absl import flags
 FLAGS = flags.FLAGS
-flags.DEFINE_integer(name = "depth"       , default = 28           , help = "Number of layers.")
-flags.DEFINE_integer(name = "widthFactor" , default = 10           , help = "How many times wider compared to normal ResNet.")
+flags.DEFINE_integer(name = "depth"       , default = 16           , help = "Number of layers.")
+flags.DEFINE_integer(name = "widthFactor" , default = 4           , help = "How many times wider compared to normal ResNet.")
 flags.DEFINE_float  (name = "dropout"     , default = 0.0          , help = "Dropout rate.")
+flags.DEFINE_bool  (name = "BN"           , default = False          , help = "use BN ?")
 
-class BasicUnit(nn.Module):
-    def __init__(self, channels: int, dropout: float):
-        super(BasicUnit, self).__init__()
-        self.block = nn.Sequential(OrderedDict([
-            ("0_normalization", nn.BatchNorm2d(channels)),
-            ("1_activation", nn.ReLU(inplace=True)),
-            ("2_convolution", nn.Conv2d(channels, channels, (3, 3), stride=1, padding=1, bias=False)),
-            ("3_normalization", nn.BatchNorm2d(channels)),
-            ("4_activation", nn.ReLU(inplace=True)),
-            ("5_dropout", nn.Dropout(dropout, inplace=True)),
-            ("6_convolution", nn.Conv2d(channels, channels, (3, 3), stride=1, padding=1, bias=False)),
-        ]))
 
+
+class BasicBlock(nn.Module):
+    def __init__(self, in_planes, out_planes, stride, dropRate=0.0):
+        super(BasicBlock, self).__init__()
+        if FLAGS.BN:
+            self.bn1 = nn.BatchNorm2d(in_planes)
+        self.relu1 = nn.ReLU(inplace=True)
+        self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                               padding=1, bias=False)
+        if FLAGS.BN:
+            self.bn2 = nn.BatchNorm2d(out_planes)
+        self.relu2 = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_planes, out_planes, kernel_size=3, stride=1,
+                               padding=1, bias=False)
+        self.droprate = dropRate
+        self.equalInOut = (in_planes == out_planes)
+        self.convShortcut = (not self.equalInOut) and nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
+                               padding=0, bias=False) or None
     def forward(self, x):
-        return self.block(x)
+        if not self.equalInOut:
+            if FLAGS.BN:
+                x = self.bn1(x)
+            x = self.relu1(x)
+        else:
+            if FLAGS.BN: out = self.relu1(self.bn1(x))
+            else:        out = self.relu1(x)
+        if FLAGS.BN: out = self.relu2(self.bn2(self.conv1(out if self.equalInOut else x)))
+        else:        out = self.relu2(self.conv1(out if self.equalInOut else x))
+        if self.droprate > 0:
+            out = F.dropout(out, p=self.droprate, training=self.training)
+        out = self.conv2(out)
+        return torch.add(x if self.equalInOut else self.convShortcut(x), out)
 
-
-class DownsampleUnit(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, stride: int, dropout: float):
-        super(DownsampleUnit, self).__init__()
-        self.norm_act = nn.Sequential(OrderedDict([
-            ("0_normalization", nn.BatchNorm2d(in_channels)),
-            ("1_activation", nn.ReLU(inplace=True)),
-        ]))
-        self.block = nn.Sequential(OrderedDict([
-            ("0_convolution", nn.Conv2d(in_channels, out_channels, (3, 3), stride=stride, padding=1, bias=False)),
-            ("1_normalization", nn.BatchNorm2d(out_channels)),
-            ("2_activation", nn.ReLU(inplace=True)),
-            ("3_dropout", nn.Dropout(dropout, inplace=True)),
-            ("4_convolution", nn.Conv2d(out_channels, out_channels, (3, 3), stride=1, padding=1, bias=False)),
-        ]))
-        self.downsample = nn.Conv2d(in_channels, out_channels, (1, 1), stride=stride, padding=0, bias=False)
-
+class NetworkBlock(nn.Module):
+    def __init__(self, nb_layers, in_planes, out_planes, block, stride, dropRate=0.0):
+        super(NetworkBlock, self).__init__()
+        self.layer = self._make_layer(block, in_planes, out_planes, nb_layers, stride, dropRate)
+    def _make_layer(self, block, in_planes, out_planes, nb_layers, stride, dropRate):
+        layers = []
+        for i in range(int(nb_layers)):
+            layers.append(block(i == 0 and in_planes or out_planes, out_planes, i == 0 and stride or 1, dropRate))
+        return nn.Sequential(*layers)
     def forward(self, x):
-        x = self.norm_act(x)
-        return self.block(x) + self.downsample(x)
-
-
-class Block(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, stride: int, depth: int, dropout: float):
-        super(Block, self).__init__()
-        self.block = nn.Sequential(
-            DownsampleUnit(in_channels, out_channels, stride, dropout),
-            *(BasicUnit(out_channels, dropout) for _ in range(depth))
-        )
-
-    def forward(self, x):
-        return self.block(x)
-
+        return self.layer(x)
 
 class WideResNet(nn.Module):
-    def __init__(self, in_channels: int, labels: int):
+    def __init__(self, num_classes):
         super(WideResNet, self).__init__()
 
-        depth        = FLAGS.depth
-        width_factor = FLAGS.widthFactor
-        dropout      = FLAGS.dropout
+        dropRate = FLAGS.dropout
+        widen_factor = FLAGS.widthFactor
+        depth = FLAGS.depth
 
-        self.filters = [16, 1 * 16 * width_factor, 2 * 16 * width_factor, 4 * 16 * width_factor]
-        self.block_depth = (depth - 4) // (3 * 2)
+        nChannels = [16, 16*widen_factor, 32*widen_factor, 64*widen_factor]
+        if (depth - 4) % 6 != 0:
+            raise RuntimeError(f"Depth = {depth} does not follow 6*n + 4, n \in N")
+        n = (depth - 4) / 6
+        block = BasicBlock
+        # 1st conv before any network block
+        self.conv1 = nn.Conv2d(3, nChannels[0], kernel_size=3, stride=1,
+                               padding=1, bias=False)
+        # 1st block
+        self.block1 = NetworkBlock(n, nChannels[0], nChannels[1], block, 1, dropRate)
+        # 2nd block
+        self.block2 = NetworkBlock(n, nChannels[1], nChannels[2], block, 2, dropRate)
+        # 3rd block
+        self.block3 = NetworkBlock(n, nChannels[2], nChannels[3], block, 2, dropRate)
+        # global average pooling and classifier
+        if FLAGS.BN:
+            self.bn1 = nn.BatchNorm2d(nChannels[3])
+        self.relu = nn.ReLU(inplace=True)
+        self.fc = nn.Linear(nChannels[3], num_classes)
+        self.nChannels = nChannels[3]
 
-        self.f = nn.Sequential(OrderedDict([
-            ("0_convolution", nn.Conv2d(in_channels, self.filters[0], (3, 3), stride=1, padding=1, bias=False)),
-            ("1_block", Block(self.filters[0], self.filters[1], 1, self.block_depth, dropout)),
-            ("2_block", Block(self.filters[1], self.filters[2], 2, self.block_depth, dropout)),
-            ("3_block", Block(self.filters[2], self.filters[3], 2, self.block_depth, dropout)),
-            ("4_normalization", nn.BatchNorm2d(self.filters[3])),
-            ("5_activation", nn.ReLU(inplace=True)),
-            ("6_pooling", nn.AvgPool2d(kernel_size=8)),
-            ("7_flattening", nn.Flatten()),
-            ("8_classification", nn.Linear(in_features=self.filters[3], out_features=labels)),
-        ]))
-
-        self._initialize()
-
-    def _initialize(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight.data, mode="fan_in", nonlinearity="relu")
-                if m.bias is not None:
-                    m.bias.data.zero_()
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
             elif isinstance(m, nn.Linear):
-                m.weight.data.zero_()
                 m.bias.data.zero_()
 
     def setBatchNormTracking(self, track_running_stats: bool):
@@ -104,4 +100,13 @@ class WideResNet(nn.Module):
                 m.track_running_stats = track_running_stats
 
     def forward(self, x):
-        return self.f(x)
+        out = self.conv1(x)
+        out = self.block1(out)
+        out = self.block2(out)
+        out = self.block3(out)
+        if FLAGS.BN:
+            out = self.bn1(out)
+        out = self.relu(out)
+        out = F.avg_pool2d(out, 8, 1, 0)
+        out = out.view(-1, self.nChannels)
+        return self.fc(out)
