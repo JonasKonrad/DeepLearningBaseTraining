@@ -1,11 +1,11 @@
 import os
 import sys
-import argparse
 import torch
 import torch.backends.cudnn as cudnn
 import json
 
 from absl import flags
+from absl import app
 
 from models.wideResNet import WideResNet
 from utility.loss import smooth_crossentropy
@@ -18,6 +18,7 @@ from utility.modelSaver import ModelSaver
 
 
 FLAGS = flags.FLAGS
+app.define_help_flags()
 flags.DEFINE_string (name = "logDir"      , default = "../logs"    , help = "main directory to store logs")
 flags.DEFINE_string (name = "logSubDir"   , default = "test"       , help = "subdir in logDir to store logs for this run")
 flags.DEFINE_integer(name = "epochs"      , default = 400          , help = "Total number of epochs.")
