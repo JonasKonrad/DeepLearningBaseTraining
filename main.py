@@ -76,13 +76,14 @@ if __name__ == "__main__":
 
             loss = smooth_crossentropy(predictions, targets)
             loss.mean().backward()
-            logs = {"loss": loss,"loss2": 2*loss}
+            logs = {"loss": loss}
             
             optimizer.step()
 
             with torch.no_grad():
                 logs["accuracy"] = torch.argmax(predictions.data, 1) == targets
                 log(logs, learning_rate = LRscheduler.lr())
+
         model.eval()
         log.eval(len_dataset=len(dataset.test))
 
@@ -98,5 +99,3 @@ if __name__ == "__main__":
             log.evalEnd()
         
             modelSaver(epoch, log.getScalar("accuracy"))
-
-    log.flush()

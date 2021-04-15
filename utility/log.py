@@ -10,7 +10,7 @@ flags.DEFINE_integer(name = "logEach"     , default = 1            , help = "Ite
 class Log:
     def __init__(self, metricConfig = [], logDir = "logs"):
         """
-        metricConfig: list of dicts. each dict represents one metric. dict can contain args: name, logTrain, logTest, showTrain, showTest
+        metricConfig: list of dicts. each dict represents one metric. dict can contain args: name, logTrain, logTest, showTrain, showTest, fmt
         """
         self.commandLine = FLAGS.verbose
         self.logEach = FLAGS.logEach
@@ -29,6 +29,7 @@ class Log:
             "logTest"   : True,
             "showTrain" : False,
             "showTest"  : False,
+            "fmt": lambda x: f"{x:.4f}"
         }
 
 
@@ -41,6 +42,7 @@ class Log:
             "name"      : "accuracy",
             "showTrain" : True,
             "showTest"  : True,
+            "fmt": lambda x: f"{100*x:.2f} %"
             })
         for conf in metricConfig:
             self._addMetric(conf)
@@ -79,9 +81,9 @@ class Log:
         #print new line
         self.flush()
         print()
-        for key, name in self.state.items():
+        for name, val in self.state.items():
             if self.config[name]["logTest"]:
-                self.writer.add_scalar(f'{key}/test', name / self.steps, self.epoch)
+                self.writer.add_scalar(f'{name}/test', val / self.steps, self.epoch)
         self.writer.flush()
 
     def __call__(self, logs, learning_rate: float = None) -> None:
@@ -102,7 +104,7 @@ class Log:
 
     def flush(self) -> None:
         if self.is_train:
-            self.trainString = f"{f'{self.learning_rate:.3e}'.center(self.columnLen-1)}┃{'│'.join([f'{self.state[name] / self.steps:.4f}'.center(self.columnLen) for name in self.showMetricsTrain])}"
+            self.trainString = f"{f'{self.learning_rate:.3e}'.center(self.columnLen-1)}┃{'│'.join([self.config[name]['fmt'](self.state[name] / self.steps).center(self.columnLen) for name in self.showMetricsTrain])}"
             
             if self.commandLine:
                 print(f"\r┃{str(self.epoch).center(self.columnLen-1)}┃{self._time().center(self.columnLen-1)}│{self.trainString}{self.loading_bar(self.batches / self.len_dataset)}",
@@ -110,7 +112,7 @@ class Log:
                     flush=True)
         else:
             start = '\r' if self.commandLine else ''
-            print(f"{start}┃{str(self.epoch).center(self.columnLen-1)}┃{self._time().center(self.columnLen-1)}│{self.trainString}┃{'│'.join([f'{self.state[name] / self.steps:.4f}'.center(self.columnLen) for name in self.showMetricsTest])}┃",
+            print(f"{start}┃{str(self.epoch).center(self.columnLen-1)}┃{self._time().center(self.columnLen-1)}│{self.trainString}┃{'│'.join([self.config[name]['fmt'](self.state[name] / self.steps).center(self.columnLen) for name in self.showMetricsTest])}┃",
                 end="")
 
             
