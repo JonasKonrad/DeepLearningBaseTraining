@@ -7,7 +7,7 @@ import json
 
 from absl import flags
 
-from models.wide_res_net import WideResNet
+from models.wideResNet import WideResNet
 from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.log import Log
