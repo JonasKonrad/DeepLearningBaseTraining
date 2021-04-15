@@ -4,23 +4,62 @@ import time
 
 from absl import flags
 FLAGS = flags.FLAGS
+flags.DEFINE_bool   (name = "verbose"     , default = False        , help = "print to terminal")
 flags.DEFINE_integer(name = "logEach"     , default = 1            , help = "Iterations to log during training.")
 
 class Log:
-    def __init__(self, log_each: int, initial_epoch=-1, logDir = "logs"):
-        self.loading_bar = LoadingBar(length=27)
-        self.best_accuracy = 0.0
-        self.log_each = log_each
-        self.epoch = initial_epoch
-        self.epoch_state = {"steps": 0}
+    def __init__(self, metricConfig = [], logDir = "logs"):
+        """
+        metricConfig: list of dicts. each dict represents one metric. dict can contain args: name, logTrain, logTest, showTrain, showTest
+        """
+        self.commandLine = FLAGS.verbose
+        self.logEach = FLAGS.logEach
+
+        self.columnLen = 15
+        self.epoch = -1
+        self.batches = 0
+        self.steps = 0
+        self.state = {}
 
         self.writer = SummaryWriter(logDir)
-    def train(self, len_dataset: int) -> None:
-        self.epoch += 1
+    
+        self.config = {}
+        self.defaultConfig = {
+            "logTrain"  : True,
+            "logTest"   : True,
+            "showTrain" : False,
+            "showTest"  : False,
+        }
+
+
+        self._addMetric({
+            "name"      : "loss",
+            "showTrain" : True,
+            "showTest"  : True,
+            })
+        self._addMetric({
+            "name"      : "accuracy",
+            "showTrain" : True,
+            "showTest"  : True,
+            })
+        for conf in metricConfig:
+            self._addMetric(conf)
+
+
+        self.showMetricsTrain = []
+        self.showMetricsTest  = []
+        for name, conf in self.config.items():
+            if conf["showTrain"]:
+                self.showMetricsTrain.append(name)
+            if conf["showTest"]:
+                self.showMetricsTest.append(name)
+
+        self.loading_bar = LoadingBar(length=(self.columnLen+1)*len(self.showMetricsTest)-3)
+
+    def train(self, epoch, len_dataset: int) -> None:
+        self.epoch = epoch
         if self.epoch == 0:
             self._print_header()
-        else:
-            self.flush()
 
         self.is_train = True
         self._reset(len_dataset)
@@ -29,85 +68,77 @@ class Log:
         self.flush()
         self.is_train = False
 
-        for key, value in self.epoch_state.items():
-            self.writer.add_scalar(f'{key}/train', self.epoch_state[key] / self.epoch_state["steps"], self.epoch)
+        for name, val in self.state.items():
+            if self.config[name]["logTrain"]:
+                self.writer.add_scalar(f'{name}/train', val / self.steps, self.epoch)
         self.writer.flush()
 
         self._reset(len_dataset)
 
     def evalEnd(self) -> None:
-        self.writer.add_scalar('loss/test', self.epoch_state["loss"] / self.epoch_state["steps"], self.epoch)
-        self.writer.add_scalar('accuracy/test', self.epoch_state["accuracy"] / self.epoch_state["steps"], self.epoch)
+        #print new line
+        self.flush()
+        print()
+        for key, name in self.state.items():
+            if self.config[name]["logTest"]:
+                self.writer.add_scalar(f'{key}/test', name / self.steps, self.epoch)
         self.writer.flush()
 
     def __call__(self, logs, learning_rate: float = None) -> None:
-        if self.is_train:
-            self._train_step(logs, learning_rate)
-        else:
-            self._eval_step(logs)
+        self.learning_rate = learning_rate
+        for key, log in logs.items():
+            if key not in self.state:
+                self._addMetric({"name": key})
+            self.state[key] += log.sum().item()
+
+        self.steps   += logs["loss"].size(0)
+        self.batches += 1
+
+        if self.commandLine and self.batches % self.logEach == self.logEach - 1:
+            self.flush()
 
     def getScalar(self, name):
-        return self.epoch_state["accuracy"] / self.epoch_state["steps"]
+        return self.state[name] / self.steps
 
     def flush(self) -> None:
         if self.is_train:
-            loss = self.epoch_state["loss"] / self.epoch_state["steps"]
-            accuracy = self.epoch_state["accuracy"] / self.epoch_state["steps"]
-
-            print(
-                f"\r┃{self.epoch:12d}  ┃{loss:12.4f}  │{100*accuracy:10.2f} %  ┃{self.learning_rate:12.3e}  │{self._time():>12}  ┃",
-                end="",
-                flush=True,
-            )
+            self.trainString = f"{f'{self.learning_rate:.3e}'.center(self.columnLen-1)}┃{'│'.join([f'{self.state[name] / self.steps:.4f}'.center(self.columnLen) for name in self.showMetricsTrain])}"
+            
+            if self.commandLine:
+                print(f"\r┃{str(self.epoch).center(self.columnLen-1)}┃{self._time().center(self.columnLen-1)}│{self.trainString}{self.loading_bar(self.batches / self.len_dataset)}",
+                    end="",
+                    flush=True)
         else:
-            loss = self.epoch_state["loss"] / self.epoch_state["steps"]
-            accuracy = self.epoch_state["accuracy"] / self.epoch_state["steps"]
+            start = '\r' if self.commandLine else ''
+            print(f"{start}┃{str(self.epoch).center(self.columnLen-1)}┃{self._time().center(self.columnLen-1)}│{self.trainString}┃{'│'.join([f'{self.state[name] / self.steps:.4f}'.center(self.columnLen) for name in self.showMetricsTest])}┃",
+                end="")
 
-            print(f"{loss:12.4f}  │{100*accuracy:10.2f} %  ┃", flush=True)
-
-            if accuracy > self.best_accuracy:
-                self.best_accuracy = accuracy
-
-    def _train_step(self, logs, learning_rate: float) -> None:
-        self.learning_rate = learning_rate
-        for key, log in logs.items():
-            if key in self.epoch_state: self.epoch_state[key] += log.sum().item()
-            else:                       self.epoch_state[key]  = log.sum().item()
-
-        self.epoch_state["steps"] += logs["loss"].size(0)
-        self.step += 1
-
-        if self.step % self.log_each == self.log_each - 1:
-            loss = self.epoch_state["loss"] / self.epoch_state["steps"]
-            accuracy = self.epoch_state["accuracy"] / self.epoch_state["steps"]
-
-
-            progress = self.step / self.len_dataset
-
-            print(
-                f"\r┃{self.epoch:12d}  ┃{loss:12.4f}  │{100*accuracy:10.2f} %  ┃{learning_rate:12.3e}  │{self._time():>12}  {self.loading_bar(progress)}",
-                end="",
-                flush=True,
-            )
-
-    def _eval_step(self, logs) -> None:
-        for keys, log in logs.items():
-            self.epoch_state[keys] += log.sum().item()
-        self.epoch_state["steps"] += logs["loss"].size(0)
-
+            
     def _reset(self, len_dataset: int) -> None:
-        self.start_time = time.time()
-        self.step = 0
+        if self.is_train:
+            self.start_time = time.time()
+        self.steps = 0
+        self.batches = 0
         self.len_dataset = len_dataset
-        for key, _ in self.epoch_state.items():
-            self.epoch_state[key] = 0
+        for key in self.state:
+            self.state[key] = 0
 
     def _time(self) -> str:
         time_seconds = int(time.time() - self.start_time)
         return f"{time_seconds // 60:02d}:{time_seconds % 60:02d} min"
 
+    def _addMetric(self, config):
+        internConfig = {}
+        for key, val in self.defaultConfig.items():
+            if key in config:
+                internConfig[key] = config[key]
+            else:
+                internConfig[key] = val
+        self.config[config["name"]] = internConfig
+        self.state[config["name"]] = 0
+
     def _print_header(self) -> None:
-        print(f"┏━━━━━━━━━━━━━━┳━━━━━━━T╺╸R╺╸A╺╸I╺╸N ━━━━━━━━┳━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳━━━━━━━╸V╺╸A╺╸L╺╸I╺╸D╺━━━━━━━┓")
-        print(f"┃              ┃                             ┃              ╷              ┃              ╷              ┃")
-        print(f"┃       epoch  ┃        loss  │    accuracy  ┃        l.r.  │     elapsed  ┃        loss  │    accuracy  ┃")
-        print(f"┠──────────────╂──────────────┼──────────────╂──────────────┼──────────────╂──────────────┼──────────────┨")
+        print(f"┏━━━━━━━━━━━━━━┳━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳{'T╺╸R╺╸A╺╸I╺╸N '.center((self.columnLen+1)*len(self.showMetricsTrain)-1,'━')}┳{'V╺╸A╺╸L╺╸I╺╸D '.center((self.columnLen+1)*len(self.showMetricsTest)-1,'━')}┓")
+        print(f"┃              ┃                             ┃{' '*((self.columnLen+1)*len(self.showMetricsTrain)-1)}┃{' '*((self.columnLen+1)*len(self.showMetricsTest)-1)}┃")
+        print(f"┃    epoch     ┃      time    │     l.r.     ┃{'│'.join([name[:self.columnLen].center(self.columnLen) for name in self.showMetricsTrain])}┃{'│'.join([name[:self.columnLen].center(self.columnLen) for name in self.showMetricsTest])}┃")
+        print(f"┠──────────────╂──────────────┼──────────────╂{'┼'.join(['─'*self.columnLen]*len(self.showMetricsTrain))}╂{'┼'.join(['─'*self.columnLen]*len(self.showMetricsTest))}┨")

@@ -22,7 +22,7 @@ flags.DEFINE_string (name = "logDir"      , default = "../logs"    , help = "mai
 flags.DEFINE_string (name = "logSubDir"   , default = "test"       , help = "subdir in logDir to store logs for this run")
 flags.DEFINE_integer(name = "epochs"      , default = 400          , help = "Total number of epochs.")
 flags.DEFINE_bool   (name = "rndSeed"     , default = False        , help = "Whether to set rnd seed.")
-flags.DEFINE_bool   (name = "contin"    , default = True        , help = "Whether to set rnd seed.")
+flags.DEFINE_bool   (name = "contin"      , default = False        , help = "Whether to set rnd seed.")
 
 if __name__ == "__main__":
     FLAGS(sys.argv)
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     cudnn.benchmark = True
 
     dataset = DataLoader()
-    log = Log(log_each=FLAGS.logEach, logDir = logDir)
+    log = Log(logDir = logDir)
     model = WideResNet(num_classes=dataset.numClasses).to(device)
 
     optimizer = SGD(model.parameters())
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     for epoch in range(startEpoch, FLAGS.epochs):
         model.train()
-        log.train(len_dataset=len(dataset.train))
+        log.train(epoch, len_dataset=len(dataset.train))
         LRscheduler(epoch)
 
         for batch in dataset.train:
@@ -76,13 +76,13 @@ if __name__ == "__main__":
 
             loss = smooth_crossentropy(predictions, targets)
             loss.mean().backward()
-            logs = {"loss": loss}
+            logs = {"loss": loss,"loss2": 2*loss}
             
             optimizer.step()
 
             with torch.no_grad():
                 logs["accuracy"] = torch.argmax(predictions.data, 1) == targets
-                log({key: log.cpu() for key, log in logs.items()}, learning_rate = LRscheduler.lr())
+                log(logs, learning_rate = LRscheduler.lr())
         model.eval()
         log.eval(len_dataset=len(dataset.test))
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
                 predictions = model(inputs)
                 loss = smooth_crossentropy(predictions, targets)
                 correct = torch.argmax(predictions, 1) == targets
-                log({"loss": loss.cpu(), "accuracy": correct.cpu()})
+                log({"loss": loss, "accuracy": correct})
 
             log.evalEnd()
         
