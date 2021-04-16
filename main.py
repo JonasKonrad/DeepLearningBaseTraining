@@ -58,14 +58,14 @@ if __name__ == "__main__":
     LRscheduler = StepLR(optimizer, FLAGS.epochs)
     modelSaver = ModelSaver(model = model, optimizer = optimizer)
     
-    startEpoch = 0
+    startEpoch = 1
     if FLAGS.contin:
         startEpoch = modelSaver.loadModel("checkpoint.model")
         startEpoch += 1
         if startEpoch >= FLAGS.epochs:
             raise RuntimeError(f"Can't cotinue model from epoch {startEpoch} to max epoch {FLAGS.epochs}.")
 
-    for epoch in range(startEpoch, FLAGS.epochs):
+    for epoch in range(startEpoch, FLAGS.epochs+1):
         model.train()
         log.train(epoch, len_dataset=len(dataset.train))
         LRscheduler(epoch)

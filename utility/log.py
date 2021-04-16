@@ -60,7 +60,7 @@ class Log:
 
     def train(self, epoch, len_dataset: int) -> None:
         self.epoch = epoch
-        if self.epoch == 0:
+        if self.epoch == 1:
             self._print_header()
 
         self.is_train = True
