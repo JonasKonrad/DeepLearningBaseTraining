@@ -55,9 +55,18 @@ class DataLoader:
         self.test  = torch.utils.data.DataLoader(test_set , batch_size=FLAGS.batchSize, shuffle=False, num_workers=FLAGS.dataThreads)
 
     def _get_statistics(self):
-        train_set = self.loader(root=FLAGS.dataDir, train=True, download=True, transform=transforms.ToTensor())
-        data = torch.cat([d[0] for d in torch.utils.data.DataLoader(train_set)])
-        return data.mean(dim=[0, 2, 3]), data.std(dim=[0, 2, 3])
+        data = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=transforms.ToTensor())
+        firstMoment = torch.zeros(3)
+        secondMoment = torch.zeros(3)
+        N = 0
+        for inputs, _ in torch.utils.data.DataLoader(data, batch_size=64, num_workers=FLAGS.dataThreads):
+            N += inputs.shape[0]
+            for i in range(3):
+                firstMoment[i] += inputs[:,i,:,:].mean()*inputs.shape[0]
+                secondMoment[i] += (inputs[:,i,:,:]**2).mean()*inputs.shape[0]
+        firstMoment .div_(N)
+        secondMoment.div_(N)
+        return firstMoment, torch.sqrt(secondMoment-firstMoment**2)
 
 
 class Cutout:
