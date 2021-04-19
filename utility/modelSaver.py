@@ -37,6 +37,7 @@ class ModelSaver():
                 else:
                     torch.save(state, os.path.join(self.dir, f"checkpoint.model"))
             if FLAGS.saveBestModel and self.bestTestAccur < testAccur:
+                self.bestTestAccur = testAccur
                 torch.save(state, os.path.join(self.dir, f"bestModel.model"))
 
     def loadLast(self):
