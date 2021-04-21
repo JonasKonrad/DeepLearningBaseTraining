@@ -19,16 +19,16 @@ flags.DEFINE_float(name = "cutoutProp" , default = 0.5, help = "Probability for 
 class DataLoader:
     def __init__(self):
 
-        self.dataset = FLAGS.dataset
+        self.datasetName = FLAGS.dataset
 
-        if self.dataset == "CIFAR10":
-            self.loader = torchvision.datasets.CIFAR10
+        if self.datasetName == "CIFAR10":
+            self.dataset = torchvision.datasets.CIFAR10
             self.numClasses = 10
-        elif self.dataset == "CIFAR100":
-            self.loader = torchvision.datasets.CIFAR100
+        elif self.datasetName == "CIFAR100":
+            self.dataset = torchvision.datasets.CIFAR100
             self.numClasses = 100
         else:
-            raise NameError(f"Dataset {self.dataset} not found.")
+            raise NameError(f"Dataset {self.datasetName} not found.")
 
 
         mean, std = self._get_statistics()
@@ -48,8 +48,8 @@ class DataLoader:
             transforms.Normalize(mean, std)
         ])
 
-        train_set = self.loader(root=FLAGS.dataDir, train=True, download=True, transform=train_transform)
-        test_set  = self.loader(root=FLAGS.dataDir, train=False, download=True, transform=test_transform)
+        train_set = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=train_transform)
+        test_set  = self.dataset(root=FLAGS.dataDir, train=False, download=True, transform=test_transform)
 
         self.train = torch.utils.data.DataLoader(train_set, batch_size=FLAGS.batchSize, shuffle=True , num_workers=FLAGS.dataThreads)
         self.test  = torch.utils.data.DataLoader(test_set , batch_size=FLAGS.batchSize, shuffle=False, num_workers=FLAGS.dataThreads)
