@@ -16,6 +16,12 @@ from utility.LRScheduler import StepLR
 from utility.optimizer import SGD
 from utility.modelSaver import ModelSaver
 
+"""
+@TODO:
+    - add gpu parallelism
+    - add more learning rate schedules (cosine)
+"""
+
 
 FLAGS = flags.FLAGS
 app.define_help_flags()

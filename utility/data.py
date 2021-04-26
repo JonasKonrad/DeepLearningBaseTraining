@@ -5,9 +5,9 @@ import torchvision.transforms as transforms
 from absl import flags
 FLAGS = flags.FLAGS
 flags.DEFINE_integer(name = "dataThreads" , default = 2            , help = "Number of CPU threads for dataloaders.")
-flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = ["CIFAR10", "CIFAR100"], help="Dataset")
 flags.DEFINE_string (name = 'dataDir'     , default = "~/.datasets", help = "main directory to store datasets")
 flags.DEFINE_integer(name = 'batchSize'   , default = 256          , help = "batch size")
+# >>new def after Data loader def<< flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = ["CIFAR10", "CIFAR100"], help="Dataset")
 
 
 flags.DEFINE_bool   (name = "flip"     , default = False        , help = "flip horizontally")
@@ -17,18 +17,18 @@ flags.DEFINE_float(name = "cutoutProp" , default = 0.5, help = "Probability for 
 
 
 class DataLoader:
+    availableDatasets = {
+        "ImageNet": [torchvision.datasets.ImageNet, 1000],
+        "CIFAR10" : [torchvision.datasets.CIFAR10, 10],
+        "CIFAR100": [torchvision.datasets.CIFAR100, 100],
+    }
     def __init__(self):
 
         self.datasetName = FLAGS.dataset
-
-        if self.datasetName == "CIFAR10":
-            self.dataset = torchvision.datasets.CIFAR10
-            self.numClasses = 10
-        elif self.datasetName == "CIFAR100":
-            self.dataset = torchvision.datasets.CIFAR100
-            self.numClasses = 100
-        else:
-            raise NameError(f"Dataset {self.datasetName} not found.")
+        try:
+            self.dataset, self.numClasses = self.availableDatasets[self.datasetName]
+        except KeyError:
+            raise NameError(f"Dataset {self.datasetName} not found. Available datasets are: {', '.join(self.availableDatasets.keys())}")
 
 
         mean, std = self._get_statistics()
@@ -67,6 +67,9 @@ class DataLoader:
         firstMoment .div_(N)
         secondMoment.div_(N)
         return firstMoment, torch.sqrt(secondMoment-firstMoment**2)
+
+
+flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = DataLoader.availableDatasets.keys(), help="Dataset")
 
 
 class Cutout:
