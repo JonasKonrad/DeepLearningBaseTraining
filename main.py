@@ -20,6 +20,7 @@ from utility.modelSaver import ModelSaver
 @TODO:
     - add gpu parallelism
     - add more learning rate schedules (cosine)
+    - check correct rnd seeding; save rnd seed
 """
 
 
