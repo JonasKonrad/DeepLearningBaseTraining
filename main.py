@@ -54,12 +54,15 @@ if __name__ == "__main__":
     if FLAGS.rndSeed: initialize(FLAGS)
     else           : initialize(FLAGS, seed=42)
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    cudnn.benchmark = True
-
     dataset = DataLoader()
     log = Log(logDir = logDir)
-    model = WideResNet(num_classes=dataset.numClasses).to(device)
+    model = WideResNet(num_classes=dataset.numClasses)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cudnn.benchmark = True
+    if torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
+    model = model.to(device)
 
     optimizer = SGD(model.parameters())
     LRscheduler = StepLR(optimizer, FLAGS.epochs)
