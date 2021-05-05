@@ -7,7 +7,7 @@ import json
 from absl import flags
 from absl import app
 
-from models.wideResNet import WideResNet
+from models import WideResNet, VanillaNet
 from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.log import Log
@@ -18,7 +18,6 @@ from utility.modelSaver import ModelSaver
 
 """
 @TODO:
-    - add gpu parallelism
     - add more learning rate schedules (cosine)
     - check correct rnd seeding; save rnd seed
 """
@@ -51,12 +50,14 @@ if __name__ == "__main__":
     with open(os.path.join(logDir, "params.json"), "w") as file:
         json.dump(FLAGS.flag_values_dict(), file, indent = 4)
 
-    if FLAGS.rndSeed: initialize(FLAGS)
-    else           : initialize(FLAGS, seed=42)
+    if FLAGS.rndSeed: initialize()
+    else            : initialize(seed=42)
 
     dataset = DataLoader()
     log = Log(logDir = logDir)
-    model = WideResNet(num_classes=dataset.numClasses)
+
+    if FLAGS.model   == "WRN"    : model = WideResNet(num_classes=dataset.numClasses)
+    elif FLAGS.model == "vanilla": model = VanillaNet(num_classes=dataset.numClasses)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cudnn.benchmark = True

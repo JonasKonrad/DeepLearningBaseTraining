@@ -2,7 +2,7 @@ import random
 import torch
 
 
-def initialize(args, seed: int = None):
+def initialize(seed: int = None):
     if seed is not None:
         random.seed(seed)
         torch.manual_seed(seed)
