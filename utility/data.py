@@ -3,35 +3,48 @@ import torchvision
 import torchvision.transforms as transforms
 
 from absl import flags
+
+# name, numClasses
+availableDatasets = {
+    "ImageNet": [torchvision.datasets.ImageNet, 1000],
+    "CIFAR10" : [torchvision.datasets.CIFAR10 , 10],
+    "CIFAR100": [torchvision.datasets.CIFAR100, 100],
+}
+dataSetStatistics = {
+    # "ImageNet": [[], []],
+    "CIFAR10" : [[0.4913999140262604, 0.48215872049331665, 0.4465313255786896], [0.24703197181224823, 0.243484228849411, 0.26158687472343445]],
+    "CIFAR100": [[0.5070753693580627, 0.4865487813949585, 0.44091784954071045], [0.2673334777355194, 0.25643861293792725, 0.2761503756046295]],
+}
+
+
 FLAGS = flags.FLAGS
 flags.DEFINE_integer(name = "dataThreads" , default = 2            , help = "Number of CPU threads for dataloaders.")
 flags.DEFINE_string (name = 'dataDir'     , default = "~/.datasets", help = "main directory to store datasets")
 flags.DEFINE_integer(name = 'batchSize'   , default = 256          , help = "batch size")
-# >>new def after Data loader def<< flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = ["CIFAR10", "CIFAR100"], help="Dataset")
+flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = availableDatasets.keys(), help="Dataset")
 
-
-flags.DEFINE_bool   (name = "flip"     , default = False        , help = "flip horizontally")
-flags.DEFINE_bool   (name = "crop"     , default = False        , help = "crop 32x32 padding 4")
-flags.DEFINE_bool   (name = "cut"      , default = False        , help = "cutout")
-flags.DEFINE_float(name = "cutoutProp" , default = 0.5, help = "Probability for cutout augmenation.")
+flags.DEFINE_bool   (name = "flip"      , default = False        , help = "flip horizontally")
+flags.DEFINE_bool   (name = "crop"      , default = False        , help = "crop 32x32 padding 4")
+flags.DEFINE_bool   (name = "cut"       , default = False        , help = "cutout")
+flags.DEFINE_float  (name = "cutoutProp", default = 0.5          , help = "Probability for cutout augmenation.")
 
 
 class DataLoader:
-    availableDatasets = {
-        "ImageNet": [torchvision.datasets.ImageNet, 1000],
-        "CIFAR10" : [torchvision.datasets.CIFAR10, 10],
-        "CIFAR100": [torchvision.datasets.CIFAR100, 100],
-    }
     def __init__(self):
-
         self.datasetName = FLAGS.dataset
         try:
-            self.dataset, self.numClasses = self.availableDatasets[self.datasetName]
+            self.dataset, self.numClasses = availableDatasets[self.datasetName]
         except KeyError:
-            raise NameError(f"Dataset {self.datasetName} not found. Available datasets are: {', '.join(self.availableDatasets.keys())}")
+            raise NameError(f"Dataset {self.datasetName} not found. Available datasets are: {', '.join(availableDatasets.keys())}")
 
 
-        mean, std = self._get_statistics()
+        if self.datasetName in dataSetStatistics:
+            mean, std = dataSetStatistics[self.datasetName]
+        else:
+            print("Calculating Mean and Std...")
+            mean, std = self._get_statistics()
+            print(f"Mean = {list(map(float,mean))}, Std = {list(map(float,std))}")
+
 
         transform_list = [
             transforms.ToTensor(),
@@ -68,8 +81,6 @@ class DataLoader:
         secondMoment.div_(N)
         return firstMoment, torch.sqrt(secondMoment-firstMoment**2)
 
-
-flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = DataLoader.availableDatasets.keys(), help="Dataset")
 
 
 class Cutout:
