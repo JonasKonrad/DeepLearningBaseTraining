@@ -3,8 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from absl import flags
+
+
+sizesDict = {
+    "tiny"   : [16 , 16 , 32 , 32 , 64],
+    "small"  : [32 , 32 , 64 , 64 , 128],
+    "medium" : [64 , 64 , 128, 128, 256],
+    "large"  : [256, 256, 512, 512, 1024]
+}
+
+
 FLAGS = flags.FLAGS
-flags.DEFINE_enum(name = "modelSize", default = "small", enum_values = ["small", "medium", "large"], help="")
+flags.DEFINE_enum(name = "modelSize", default = "small", enum_values = sizesDict.keys(), help="")
 
 class NetworkBlock(nn.Module):
     def __init__(self, inDimension, outDimension, dropRate=0.0, batchNorm = False):
@@ -26,11 +36,6 @@ class NetworkBlock(nn.Module):
 
 
 class VanillaNet(nn.Module):
-    sizesDict = {
-        "small"  : [32 , 32 , 64 , 64 , 128],
-        "medium" : [64 , 64 , 128, 128, 256],
-        "large"  : [256, 256, 512, 512, 1024]
-    }
     #@TODO determine inputSize automatically
     def __init__(self, num_classes, inputSize = 32):
         super(VanillaNet, self).__init__()
@@ -38,7 +43,7 @@ class VanillaNet(nn.Module):
         self.batchNorm = FLAGS.BN
         self.droprate = FLAGS.dropout
 
-        self.sizes = self.sizesDict[FLAGS.modelSize]
+        self.sizes = sizesDict[FLAGS.modelSize]
 
         self.block1 = NetworkBlock(3            , self.sizes[0], dropRate = self.droprate, batchNorm = self.batchNorm)
         self.block2 = NetworkBlock(self.sizes[0], self.sizes[1], dropRate = self.droprate, batchNorm = self.batchNorm)
