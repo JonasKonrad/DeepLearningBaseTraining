@@ -1,4 +1,3 @@
-from utility.loading_bar import LoadingBar
 from torch.utils.tensorboard import SummaryWriter
 import time
 
@@ -144,3 +143,13 @@ class Log:
         print(f"┃              ┃                             ┃{' '*((self.columnLen+1)*len(self.showMetricsTrain)-1)}┃{' '*((self.columnLen+1)*len(self.showMetricsTest)-1)}┃")
         print(f"┃    epoch     ┃      time    │     l.r.     ┃{'│'.join([name[:self.columnLen].center(self.columnLen) for name in self.showMetricsTrain])}┃{'│'.join([name[:self.columnLen].center(self.columnLen) for name in self.showMetricsTest])}┃")
         print(f"┠──────────────╂──────────────┼──────────────╂{'┼'.join(['─'*self.columnLen]*len(self.showMetricsTrain))}╂{'┼'.join(['─'*self.columnLen]*len(self.showMetricsTest))}┨")
+
+class LoadingBar:
+    def __init__(self, length: int = 40):
+        self.length = length
+        self.symbols = ['┈', '░', '▒', '▓']
+
+    def __call__(self, progress: float) -> str:
+        p = int(progress * self.length*4 + 0.5)
+        d, r = p // 4, p % 4
+        return '┠┈' + d * '█' + ((self.symbols[r]) + max(0, self.length-1-d) * '┈' if p < self.length*4 else '') + "┈┨"
