@@ -18,6 +18,7 @@ from utility.modelSaver import ModelSaver
 
 """
 @TODO:
+    - add model summary
     - add more learning rate schedules (cosine)
     - check correct rnd seeding; save rnd seed
 """

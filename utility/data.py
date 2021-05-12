@@ -1,17 +1,57 @@
 import torch
 import torchvision
 import torchvision.transforms as transforms
+import os
 
 from absl import flags
 
+class ImageNet_2(torch.datasets.ImageFolder):
+    def __init__(self, train = True, download = None, transform = []):
+        if train:
+            dir = os.path.join(FLAGS.dataDir, 'train')
+            transform = [
+                transforms.RandomSizedCrop(224)
+                ] + transform
+        else:
+            dir = os.path.join(FLAGS.dataDir, 'val')
+            transform = [
+                transforms.Scale(256),
+                transforms.CenterCrop(224),
+                ] + transform
+
+        super(ImageNet, self).__init__(self, dir, transform = transform)
+
+class ImageNet(torch.datasets.ImageNet):
+    def __init__(self, train = True, download = None, transform = []):
+
+        if train:
+            split = "train"
+            dir = os.path.join(FLAGS.dataDir, 'train')
+            transform = [
+                transforms.RandomSizedCrop(224)
+                ] + transform
+        else:
+            split = "val"
+            dir = os.path.join(FLAGS.dataDir, 'val')
+            transform = [
+                transforms.Scale(256),
+                transforms.CenterCrop(224),
+                ] + transform
+
+        super(ImageNet, self).__init__(self, dir, split = split, transform = transform)
+
+
+
+
+
 # name, numClasses
 availableDatasets = {
-    "ImageNet": [torchvision.datasets.ImageNet, 1000],
+    "ImageNet": [ImageNet, 1000],
     "CIFAR10" : [torchvision.datasets.CIFAR10 , 10],
     "CIFAR100": [torchvision.datasets.CIFAR100, 100],
 }
 dataSetStatistics = {
-    # "ImageNet": [[], []],
+    "ImageNet": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
     "CIFAR10" : [[0.4913999140262604, 0.48215872049331665, 0.4465313255786896], [0.24703197181224823, 0.243484228849411, 0.26158687472343445]],
     "CIFAR100": [[0.5070753693580627, 0.4865487813949585, 0.44091784954071045], [0.2673334777355194, 0.25643861293792725, 0.2761503756046295]],
 }
@@ -50,9 +90,12 @@ class DataLoader:
             transforms.ToTensor(),
             transforms.Normalize(mean, std),
         ]
-        if FLAGS.flip: transform_list.append(torchvision.transforms.RandomHorizontalFlip())
-        if FLAGS.crop: transform_list.append(torchvision.transforms.RandomCrop(size=(32, 32), padding=4))
-        if FLAGS.cut : transform_list.append(Cutout())
+        if FLAGS.flip:
+            transform_list.append(torchvision.transforms.RandomHorizontalFlip())
+        if FLAGS.cut:
+            transform_list.append(Cutout())
+        if FLAGS.crop and self.datasetName in ["CIFAR10","CIFAR100"]:
+            transform_list.append(torchvision.transforms.RandomCrop(size=(32, 32), padding=4))
 
         train_transform = transforms.Compose(transform_list)
 
@@ -80,6 +123,8 @@ class DataLoader:
         firstMoment .div_(N)
         secondMoment.div_(N)
         return firstMoment, torch.sqrt(secondMoment-firstMoment**2)
+
+
 
 
 
