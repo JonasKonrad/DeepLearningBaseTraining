@@ -5,7 +5,7 @@ import os
 
 from absl import flags
 
-class ImageNet_2(torch.datasets.ImageFolder):
+class ImageNet_2(torchvision.datasets.ImageFolder):
     def __init__(self, train = True, download = None, transform = []):
         if train:
             dir = os.path.join(FLAGS.dataDir, 'train')
@@ -19,9 +19,9 @@ class ImageNet_2(torch.datasets.ImageFolder):
                 transforms.CenterCrop(224),
                 ] + transform
 
-        super(ImageNet, self).__init__(self, dir, transform = transform)
+        super(ImageNet, self).__init__(dir, transform = transform)
 
-class ImageNet(torch.datasets.ImageNet):
+class ImageNet(torchvision.datasets.ImageNet):
     def __init__(self, train = True, download = None, transform = []):
 
         if train:
@@ -38,7 +38,7 @@ class ImageNet(torch.datasets.ImageNet):
                 transforms.CenterCrop(224),
                 ] + transform
 
-        super(ImageNet, self).__init__(self, dir, split = split, transform = transform)
+        super(ImageNet, self).__init__(dir, split = split, transform = transform)
 
 
 

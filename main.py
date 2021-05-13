@@ -7,7 +7,7 @@ import json
 from absl import flags
 from absl import app
 
-from models import WideResNet, VanillaNet
+from models import modelDict
 from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.log import Log
@@ -57,8 +57,7 @@ if __name__ == "__main__":
     dataset = DataLoader()
     log = Log(logDir = logDir)
 
-    if FLAGS.model   == "WRN"    : model = WideResNet(num_classes=dataset.numClasses)
-    elif FLAGS.model == "vanilla": model = VanillaNet(num_classes=dataset.numClasses)
+    model = modelDict[FLAGS.model](num_classes=dataset.numClasses)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cudnn.benchmark = True

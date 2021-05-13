@@ -5,7 +5,6 @@ import torch.nn.functional as F
 
 from absl import flags
 FLAGS = flags.FLAGS
-flags.DEFINE_integer(name = "depth"       , default = 16           , help = "Number of layers.")
 flags.DEFINE_integer(name = "widthFactor" , default = 4           , help = "How many times wider compared to normal ResNet.")
 
 
