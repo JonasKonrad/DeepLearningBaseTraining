@@ -72,6 +72,7 @@ class Log:
         for name, val in self.state.items():
             if self.config[name]["logTrain"]:
                 self.writer.add_scalar(f'{name}/train', val / self.steps, self.epoch)
+        self.writer.add_scalar('LR',self.learning_rate, self.epoch)
         self.writer.flush()
 
         self._reset(len_dataset)

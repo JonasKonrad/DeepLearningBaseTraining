@@ -12,14 +12,13 @@ from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.log import Log
 from utility.initialize import initialize
-from utility.LRScheduler import StepLR
+from utility.LRScheduler import getLRScheduler
 from utility.optimizer import SGD
 from utility.modelSaver import ModelSaver
 
 """
 @TODO:
     - add model summary
-    - add more learning rate schedules (cosine)
     - check correct rnd seeding; save rnd seed
 """
 
@@ -66,7 +65,7 @@ if __name__ == "__main__":
     model = model.to(device)
 
     optimizer = SGD(model.parameters())
-    LRscheduler = StepLR(optimizer, FLAGS.epochs)
+    lrScheduler = getLRScheduler(optimizer)
     modelSaver = ModelSaver(model = model, optimizer = optimizer)
     
     startEpoch = 1
@@ -78,10 +77,10 @@ if __name__ == "__main__":
 
     for epoch in range(startEpoch, FLAGS.epochs+1):
         model.train()
-        log.train(epoch, len_dataset=len(dataset.train))
-        LRscheduler(epoch)
+        numBatches = len(dataset.train)
+        log.train(epoch, len_dataset=numBatches)
 
-        for batch in dataset.train:
+        for i, batch in enumerate(dataset.train):
             inputs, targets = (b.to(device) for b in batch)
 
             predictions = model(inputs)
@@ -92,9 +91,11 @@ if __name__ == "__main__":
             
             optimizer.step()
 
+            lrScheduler.step(epoch-1, i/numBatches)
+
             with torch.no_grad():
                 logs["accuracy"] = torch.argmax(predictions.data, 1) == targets
-                log(logs, learning_rate = LRscheduler.lr())
+                log(logs, learning_rate = lrScheduler.get_last_lr()[0])
 
         model.eval()
         log.eval(len_dataset=len(dataset.test))

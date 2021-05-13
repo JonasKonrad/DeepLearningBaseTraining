@@ -7,7 +7,7 @@ flags.DEFINE_float  (name = "momentum"    , default = 0.9          , help = "SGD
 
 class SGD(torch.optim.Optimizer):
     def __init__(self, params, **kwargs):
-        defaults = dict(lr = None,
+        defaults = dict(lr           = FLAGS.learningRate,
                         momentum     = FLAGS.momentum,
                         weight_decay = FLAGS.weightDecay,
                         **kwargs)
