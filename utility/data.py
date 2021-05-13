@@ -5,40 +5,46 @@ import os
 
 from absl import flags
 
-class ImageNet_2(torchvision.datasets.ImageFolder):
-    def __init__(self, train = True, download = None, transform = []):
-        if train:
-            dir = os.path.join(FLAGS.dataDir, 'train')
-            transform = [
-                transforms.RandomSizedCrop(224)
-                ] + transform
-        else:
-            dir = os.path.join(FLAGS.dataDir, 'val')
-            transform = [
-                transforms.Scale(256),
-                transforms.CenterCrop(224),
-                ] + transform
 
-        super(ImageNet, self).__init__(dir, transform = transform)
-
-class ImageNet(torchvision.datasets.ImageNet):
-    def __init__(self, train = True, download = None, transform = []):
+class ImageNet(torchvision.datasets.ImageFolder):
+    def __init__(self, root, train = True, download = None, transform = []):
 
         if train:
             split = "train"
-            dir = os.path.join(FLAGS.dataDir, 'train')
-            transform = [
-                transforms.RandomSizedCrop(224)
-                ] + transform
+            dir = os.path.join(root, 'train')
+            transform.transforms = [
+                transforms.RandomResizedCrop(224, scale=(1, 1), ratio=(1,1))
+                ] + transform.transforms
         else:
             split = "val"
-            dir = os.path.join(FLAGS.dataDir, 'val')
-            transform = [
+            dir = os.path.join(root, 'val')
+            transform.transforms = [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                ] + transform.transforms
+
+        super(ImageNet, self).__init__(dir, transform = transform)
+
+class ImageNet_2(torchvision.datasets.ImageNet):
+    def __init__(self, root, train = True, download = None, transform = []):
+
+        if train:
+            split = "train"
+            dir = os.path.join(root, 'train')
+            transform.transforms = [
+                transforms.RandomResizedCrop(224, scale=(1, 1), ratio=(1,1))
+                ] + transform.transforms
+        else:
+            split = "val"
+            dir = os.path.join(root, 'val')
+            transform.transforms = [
                 transforms.Scale(256),
                 transforms.CenterCrop(224),
-                ] + transform
+                ] + transform.transforms
 
         super(ImageNet, self).__init__(dir, split = split, transform = transform)
+
+
 
 
 
