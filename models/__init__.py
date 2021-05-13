@@ -1,13 +1,23 @@
 from .wideResNet import WideResNet
 from .vanillaNet import VanillaNet
+from .efficientNet import EfficientNet
 from .vgg import VGG
+
+
+def effNetWrapper(*args, **kwargs):
+    return EfficientNet.from_name('efficientnet-b7', num_classes=100)
+
 
 # Dict could be used to select model without switch/case
 modelDict = {
     "WRN"    : WideResNet,
     "vanilla": VanillaNet,
     "VGG"    : VGG,
+    "EfficientNet"    : effNetWrapper,
 }
+
+
+
 
 # Define flags here that are used by multiple models to avoid double definitions.
 from absl import flags
