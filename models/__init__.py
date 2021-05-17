@@ -4,8 +4,8 @@ from .efficientNet import EfficientNet
 from .vgg import VGG
 
 
-def effNetWrapper(*args, **kwargs):
-    return EfficientNet.from_name('efficientnet-b7', num_classes=100)
+def effNetWrapper(num_classes, *args, **kwargs):
+    return EfficientNet.from_name('efficientnet-b7', num_classes=num_classes)
 
 
 # Dict could be used to select model without switch/case
