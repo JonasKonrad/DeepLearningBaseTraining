@@ -8,15 +8,12 @@ from absl import flags
 
 class ImageNet(torchvision.datasets.ImageFolder):
     def __init__(self, root, train = True, download = None, transform = []):
-
         if train:
-            split = "train"
             dir = os.path.join(root, 'train')
             transform.transforms = [
-                transforms.RandomResizedCrop(224, scale=(1, 1), ratio=(1,1))
+                transforms.RandomResizedCrop(224, scale=(1., 1.), ratio=(1.,1.))
                 ] + transform.transforms
         else:
-            split = "val"
             dir = os.path.join(root, 'val')
             transform.transforms = [
                 transforms.Resize(256),
@@ -24,31 +21,6 @@ class ImageNet(torchvision.datasets.ImageFolder):
                 ] + transform.transforms
 
         super(ImageNet, self).__init__(dir, transform = transform)
-
-class ImageNet_2(torchvision.datasets.ImageNet):
-    def __init__(self, root, train = True, download = None, transform = []):
-
-        if train:
-            split = "train"
-            dir = os.path.join(root, 'train')
-            transform.transforms = [
-                transforms.RandomResizedCrop(224, scale=(1, 1), ratio=(1,1))
-                ] + transform.transforms
-        else:
-            split = "val"
-            dir = os.path.join(root, 'val')
-            transform.transforms = [
-                transforms.Scale(256),
-                transforms.CenterCrop(224),
-                ] + transform.transforms
-
-        super(ImageNet, self).__init__(dir, split = split, transform = transform)
-
-
-
-
-
-
 
 # name, numClasses
 availableDatasets = {
