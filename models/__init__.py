@@ -17,8 +17,6 @@ modelDict = {
 }
 
 
-
-
 # Define flags here that are used by multiple models to avoid double definitions.
 from absl import flags
 FLAGS = flags.FLAGS
