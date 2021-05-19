@@ -2,7 +2,7 @@ import math
 from absl import flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float  (name = "learningRate", default = 0.1               , help = "Base learning rate at the start of the training.")
-flags.DEFINE_list   (name = "lrScheduler"   , default = ["cos"]  , help = "list of learning rate schedulers")
+flags.DEFINE_list   (name = "lrScheduler"   , default = ["CWR"]  , help = "list of learning rate schedulers")
 
 
 class _LRScheduler():
@@ -73,7 +73,7 @@ class CosineLR(_LRScheduler):
 
 
 flags.DEFINE_float  (name = "LRScheduler_WRN_T0"   , default = 50              , help = "Number of epochs for the first restart.")
-flags.DEFINE_float  (name = "LRScheduler_WRN_Tmult", default = 1.2               , help = "Factor by which the period length is increased after each restart.")
+flags.DEFINE_float  (name = "LRScheduler_WRN_Tmult", default = 1.0               , help = "Factor by which the period length is increased after each restart.")
 class CosineWarmRestartsLR(_LRScheduler):
     """
         Args:
@@ -86,16 +86,25 @@ class CosineWarmRestartsLR(_LRScheduler):
         self.T0    = FLAGS.LRScheduler_WRN_T0
         self.Tmult = FLAGS.LRScheduler_WRN_Tmult
 
-        self.Ti = self.T0 #current half wavelength
-        self.Tdone = 0 # sum of width of finished cycles
 
-    def _calcFactor(self, progress):
-        if self.last_epoch + progress >=  self.Tdone + self.Ti:
-            self.Tdone += self.Ti
-            self.Ti   *= self.Tmult
+        # closed form of
+        # self.factor = 0.5 * (1 + math.cos(d/Ti *math.pi))
+        # where d ist distance to last restart, Ti is current period length
+        # and restart epochs are given by E = T_0 * sum_x=0^N T_m^x ; x \in N
+        if FLAGS.LRScheduler_WRN_Tmult == 1:
+            def __calcFactor(progress: float):
+                x = int(((self.last_epoch + progress) - self.T0 )/self.T0  + 1)
+                d = (self.last_epoch + progress) - x * self.T0 
+                Ti = self.T0 
+                self.factor = 0.5 * (1 + math.cos(d/Ti *math.pi))
+        else:
+            def __calcFactor(progress: float):
+                x = int(np.log(1-(1-self.Tmult)*(self.last_epoch + progress)/self.T0)/np.log(self.Tmult)) - 1
+                d = (self.last_epoch + progress) - (1-self.Tmult**(x+1))/(1-self.Tmult) * self.T0
+                Ti = self.T0 * self.Tmult**(x+1)
+                self.factor = 0.5 * (1 + math.cos(d/Ti *math.pi))
 
-        self.factor = 0.5 * (1 + math.cos((self.last_epoch + progress - self.Tdone)/self.Ti *math.pi))
-
+        self._calcFactor = __calcFactor
 
 class ChainedScheduler(_LRScheduler):
     def __init__(self, optimizer, schedulerClasses: list, last_epoch = -1):
@@ -140,23 +149,24 @@ if __name__ == '__main__':
     import sys
     import torch
     import matplotlib.pylab as plt
+    import numpy as np
     
-    flags.DEFINE_integer(name = "epochs"      , default = 300          , help = "Total number of epochs.")
+    flags.DEFINE_integer(name = "epochs"      , default = 160          , help = "Total number of epochs.")
     FLAGS(sys.argv)
     optimizer = torch.optim.SGD(torch.nn.Linear(5,5).parameters(), lr = FLAGS.learningRate)
     lrScheduler = getLRScheduler(optimizer)
 
-    batches = 100
+    batches = 10
     lr = []
-    for epoch in range(FLAGS.epochs):
+    epochs = []
+    for epoch in range(1, FLAGS.epochs + 1):
         for batch in range(batches):
             lr.append(optimizer.param_groups[0]["lr"])
-            lrScheduler.step(epoch, batch/batches)
-
-
+            lrScheduler.step(epoch-1, (batch+1)/batches)
+            epochs.append(epoch + batch/batches)
 
     fig, ax = plt.subplots()
 
-    ax.plot(lr)
+    ax.plot(epochs, lr, "r-")
 
     plt.show()

@@ -91,7 +91,7 @@ if __name__ == "__main__":
             
             optimizer.step()
 
-            lrScheduler.step(epoch-1, i/numBatches)
+            lrScheduler.step(epoch-1, (i+1)/numBatches)
 
             with torch.no_grad():
                 logs["accuracy"] = torch.argmax(predictions.data, 1) == targets
