@@ -2,7 +2,7 @@ import math
 from absl import flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float  (name = "learningRate", default = 0.1               , help = "Base learning rate at the start of the training.")
-flags.DEFINE_list   (name = "lrScheduler"   , default = ["CWR"]  , help = "list of learning rate schedulers")
+flags.DEFINE_list   (name = "lrScheduler"   , default = ["cos"]  , help = "list of learning rate schedulers")
 
 
 class _LRScheduler():
@@ -73,7 +73,7 @@ class CosineLR(_LRScheduler):
 
 
 flags.DEFINE_float  (name = "LRScheduler_WRN_T0"   , default = 50              , help = "Number of epochs for the first restart.")
-flags.DEFINE_float  (name = "LRScheduler_WRN_Tmult", default = 1.0               , help = "Factor by which the period length is increased after each restart.")
+flags.DEFINE_float  (name = "LRScheduler_WRN_Tmult", default = 1.2               , help = "Factor by which the period length is increased after each restart.")
 class CosineWarmRestartsLR(_LRScheduler):
     """
         Args:
@@ -99,7 +99,7 @@ class CosineWarmRestartsLR(_LRScheduler):
                 self.factor = 0.5 * (1 + math.cos(d/Ti *math.pi))
         else:
             def __calcFactor(progress: float):
-                x = int(np.log(1-(1-self.Tmult)*(self.last_epoch + progress)/self.T0)/np.log(self.Tmult)) - 1
+                x = int(math.log(1-(1-self.Tmult)*(self.last_epoch + progress)/self.T0)/math.log(self.Tmult)) - 1
                 d = (self.last_epoch + progress) - (1-self.Tmult**(x+1))/(1-self.Tmult) * self.T0
                 Ti = self.T0 * self.Tmult**(x+1)
                 self.factor = 0.5 * (1 + math.cos(d/Ti *math.pi))
