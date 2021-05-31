@@ -382,6 +382,10 @@ class EfficientNet(nn.Module):
             out_channels = round_filters(32, self._global_params)
             self._conv_stem = Conv2d(in_channels, out_channels, kernel_size=3, stride=2, bias=False)
 
+    def setBatchNormTracking(self, track_running_stats: bool):
+        for m in self.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.track_running_stats = track_running_stats
 
 
 
