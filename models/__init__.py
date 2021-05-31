@@ -7,13 +7,17 @@ from .vgg import VGG
 def effNetWrapper(num_classes, *args, **kwargs):
     return EfficientNet.from_name('efficientnet-b7', num_classes=num_classes)
 
+def effNetWrapper_pretrained(num_classes, *args, **kwargs):
+    return EfficientNet.from_pretrained('efficientnet-b7', num_classes=num_classes)
+
 
 # Dict could be used to select model without switch/case
 modelDict = {
-    "WRN"    : WideResNet,
-    "vanilla": VanillaNet,
-    "VGG"    : VGG,
-    "EfficientNet"    : effNetWrapper,
+    "WRN"              : WideResNet,
+    "vanilla"          : VanillaNet,
+    "VGG"              : VGG,
+    "EfficientNet"     : effNetWrapper,
+    "EfficientNet_pre" : effNetWrapper_pretrained,
 }
 
 
