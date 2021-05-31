@@ -19,7 +19,7 @@ class ModelSaver():
         pass
 
     def __call__(self, epoch, testAccur):
-        if epoch in [int(ep) for ep in FLAGS.checkpointsList] or \
+        if epoch in map(int, FLAGS.checkpointsList) or \
             FLAGS.saveCheckpoint or \
             (FLAGS.saveBestModel and self.bestTestAccur < testAccur):
             
@@ -29,7 +29,7 @@ class ModelSaver():
                      'bestTestAccur': self.bestTestAccur,
                      }
 
-            if epoch in [int(ep) for ep in FLAGS.checkpointsList]:
+            if epoch in map(int, FLAGS.checkpointsList):
                 torch.save(state, os.path.join(self.dir, f"epoch_{epoch}.model"))
             if FLAGS.saveCheckpoint:
                 if epoch == FLAGS.epochs - 1 and not FLAGS.keepLastCheckpoint:
