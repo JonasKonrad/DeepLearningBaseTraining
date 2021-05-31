@@ -12,7 +12,7 @@ from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.log import Log
 from utility.initialize import initialize
-from utility.LRScheduler import getLRScheduler
+from utility.LRScheduler import getLRScheduler, _LRScheduler
 from utility.optimizer import SGD
 from utility.modelSaver import ModelSaver
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     dataset = DataLoader()
     log = Log(logDir = logDir)
 
-    model = modelDict[FLAGS.model](num_classes=dataset.numClasses)
+    model: torch.nn.Module = modelDict[FLAGS.model](num_classes=dataset.numClasses)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cudnn.benchmark = True
@@ -65,7 +65,8 @@ if __name__ == "__main__":
     model = model.to(device)
 
     optimizer = SGD(model.parameters())
-    lrScheduler = getLRScheduler(optimizer)
+    # optimizer: torch.optim.Optimizer = optimizerDict[FLAGS.model](num_classes=dataset.numClasses)
+    lrScheduler: _LRScheduler = getLRScheduler(optimizer)
     modelSaver = ModelSaver(model = model, optimizer = optimizer)
     
     startEpoch = 1

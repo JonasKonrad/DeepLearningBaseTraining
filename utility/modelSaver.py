@@ -4,9 +4,9 @@ import torch
 
 from absl import flags
 FLAGS = flags.FLAGS
-flags.DEFINE_bool   (name = "saveCheckpoint"    , default = False        , help = "save model after each epoch (delete after next epoch)")
-flags.DEFINE_bool   (name = "saveBestModel"     , default = False        , help = "keep best model")
-flags.DEFINE_bool   (name = "keepLastCheckpoint", default = False        , help = "keep checkpoint after last epoch is done")
+flags.DEFINE_bool   (name = "saveCheckpoint"    , default = False     , help = "save model after each epoch (delete after next epoch)")
+flags.DEFINE_bool   (name = "saveBestModel"     , default = False     , help = "keep best model")
+flags.DEFINE_bool   (name = "keepLastCheckpoint", default = False     , help = "keep checkpoint after last epoch is done")
 flags.DEFINE_list   (name = "checkpointsList"   , default = []        , help = "keep checkpoint at specific epochs")
 
 
