@@ -11,7 +11,7 @@ from models import modelDict
 from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.log import Log
-from utility.initialize import initialize
+from utility.utils import initialize
 from utility.LRScheduler import getLRScheduler, _LRScheduler
 from utility.optimizer import SGD
 from utility.modelSaver import ModelSaver
@@ -50,8 +50,7 @@ if __name__ == "__main__":
     with open(os.path.join(logDir, "params.json"), "w") as file:
         json.dump(FLAGS.flag_values_dict(), file, indent = 4)
 
-    if FLAGS.rndSeed: initialize()
-    else            : initialize(seed=42)
+    initialize() #set up seed and cudnn
 
     dataset = DataLoader()
     log = Log(logDir = logDir)
