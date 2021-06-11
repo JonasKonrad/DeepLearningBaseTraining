@@ -36,7 +36,7 @@ dataSetStatistics = {
 
 
 FLAGS = flags.FLAGS
-flags.DEFINE_integer(name = "dataThreads" , default = 2            , help = "Number of CPU threads for dataloaders.")
+flags.DEFINE_integer(name = "dataThreads" , default = 6            , help = "Number of CPU threads for dataloaders.")
 flags.DEFINE_string (name = 'dataDir'     , default = "~/.datasets", help = "main directory to store datasets")
 flags.DEFINE_integer(name = 'batchSize'   , default = 256          , help = "batch size")
 flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = availableDatasets.keys(), help="Dataset")

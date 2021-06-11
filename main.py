@@ -1,7 +1,6 @@
 import os
 import sys
 import torch
-import torch.backends.cudnn as cudnn
 import json
 
 from absl import flags
@@ -28,7 +27,6 @@ app.define_help_flags()
 flags.DEFINE_string (name = "logDir"      , default = "../logs"    , help = "main directory to store logs")
 flags.DEFINE_string (name = "logSubDir"   , default = "test"       , help = "subdir in logDir to store logs for this run")
 flags.DEFINE_integer(name = "epochs"      , default = 400          , help = "Total number of epochs.")
-flags.DEFINE_bool   (name = "rndSeed"     , default = False        , help = "Whether to set rnd seed.")
 flags.DEFINE_bool   (name = "contin"      , default = False        , help = "Whether to set rnd seed.")
 
 if __name__ == "__main__":
@@ -58,7 +56,6 @@ if __name__ == "__main__":
     model: torch.nn.Module = modelDict[FLAGS.model](num_classes=dataset.numClasses)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    cudnn.benchmark = True
     if torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
     model = model.to(device)
