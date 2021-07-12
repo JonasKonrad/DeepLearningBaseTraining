@@ -2,6 +2,8 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import os
+from .augmentation import AutoAugment
+
 
 from absl import flags
 
@@ -41,10 +43,11 @@ flags.DEFINE_string (name = 'dataDir'     , default = "~/.datasets", help = "mai
 flags.DEFINE_integer(name = 'batchSize'   , default = 256          , help = "batch size")
 flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = availableDatasets.keys(), help="Dataset")
 
-flags.DEFINE_bool   (name = "flip"      , default = False        , help = "flip horizontally")
-flags.DEFINE_bool   (name = "crop"      , default = False        , help = "crop 32x32 padding 4")
-flags.DEFINE_bool   (name = "cut"       , default = False        , help = "cutout")
-flags.DEFINE_float  (name = "cutoutProp", default = 0.5          , help = "Probability for cutout augmenation.")
+flags.DEFINE_bool   (name = "flip"       , default = False        , help = "flip horizontally")
+flags.DEFINE_bool   (name = "crop"       , default = False        , help = "crop 32x32 padding 4")
+flags.DEFINE_bool   (name = "cut"        , default = False        , help = "cutout")
+flags.DEFINE_float  (name = "cutoutProp" , default = 0.5          , help = "Probability for cutout augmenation.")
+flags.DEFINE_bool   (name = "autoAugment", default = False        , help = "autoAugment")
 
 
 class DataLoader:
@@ -64,10 +67,9 @@ class DataLoader:
             print(f"Mean = {list(map(float,mean))}, Std = {list(map(float,std))}")
 
 
-        transform_list = [
-            transforms.ToTensor(),
-            transforms.Normalize(mean, std),
-        ]
+        transform_list = []
+        if FLAGS.autoAugment and self.datasetName in ["CIFAR10","CIFAR100"]:
+            transform_list.append(AutoAugment())
         if FLAGS.flip:
             transform_list.append(torchvision.transforms.RandomHorizontalFlip())
         if FLAGS.cut:
@@ -75,6 +77,10 @@ class DataLoader:
         if FLAGS.crop and self.datasetName in ["CIFAR10","CIFAR100"]:
             transform_list.append(torchvision.transforms.RandomCrop(size=(32, 32), padding=4))
 
+        transform_list += [
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ]
         train_transform = transforms.Compose(transform_list)
 
         test_transform = transforms.Compose([
