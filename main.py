@@ -21,13 +21,13 @@ from utility.modelSaver import ModelSaver
     - check correct rnd seeding; save rnd seed
 """
 
-
 FLAGS = flags.FLAGS
 app.define_help_flags()
 flags.DEFINE_string (name = "logDir"      , default = "../logs"    , help = "main directory to store logs")
 flags.DEFINE_string (name = "logSubDir"   , default = "test"       , help = "subdir in logDir to store logs for this run")
 flags.DEFINE_integer(name = "epochs"      , default = 400          , help = "Total number of epochs.")
 flags.DEFINE_bool   (name = "contin"      , default = False        , help = "Whether to set rnd seed.")
+flags.DEFINE_bool   (name = "freezeBN"    , default = False        , help = "Whether to freezeBN.")
 
 if __name__ == "__main__":
     FLAGS(sys.argv)
@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if torch.cuda.device_count() > 1:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         model = torch.nn.DataParallel(model)
     model = model.to(device)
 
@@ -77,6 +77,12 @@ if __name__ == "__main__":
         model.train()
         numBatches = len(dataset.train)
         log.train(epoch, len_dataset=numBatches)
+
+        if FLAGS.freezeBN:
+            for m in model.modules():
+                if isinstance(m, torch.nn.BatchNorm2d):
+                    m.training = False
+                    m.track_running_stats = False
 
         for i, batch in enumerate(dataset.train):
             inputs, targets = (b.to(device) for b in batch)
