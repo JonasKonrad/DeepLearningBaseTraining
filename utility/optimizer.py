@@ -2,7 +2,7 @@ import torch
 
 from absl import flags
 FLAGS = flags.FLAGS
-flags.DEFINE_float  (name = "weightDecay" , default = 0.0005       , help = "L2 weight decay.")
+flags.DEFINE_float  (name = "weightDecay" , default = 0.00001       , help = "L2 weight decay.")
 flags.DEFINE_float  (name = "momentum"    , default = 0.9          , help = "SGD Momentum.")
 flags.DEFINE_enum   (name = "optimzer"   , default = "SGD"   , enum_values = ["SGD"], help="Dataset")
 flags.DEFINE_integer(name = "batchSizeMult", default = 1 , help = "Effective Batch Size is multiplied by this factor by applying gradient step only after 'batchSizeMult' iterations.")
