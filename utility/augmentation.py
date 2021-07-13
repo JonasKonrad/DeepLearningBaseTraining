@@ -219,7 +219,7 @@ def sharpness(img, magnitude):
 
 
 def cutout(org_img, magnitude=None):
-    img = np.array(img)
+    # img = np.array(img)
 
     magnitudes = np.linspace(0, 60/331, 11)
 

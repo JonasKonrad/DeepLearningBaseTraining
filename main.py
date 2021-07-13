@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if torch.cuda.device_count() > 1:
-        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model, process_group=torch.distributed.new_group(4))
         model = torch.nn.DataParallel(model)
     model = model.to(device)
 
