@@ -92,7 +92,14 @@ class DataLoader:
         ]
         train_transform = transforms.Compose(transform_list)
 
-        test_transform = transforms.Compose([
+        if FLAGS.imageSize is not None:
+            test_transform = [
+                transforms.Resize(FLAGS.imageSize, interpolation = torchvision.transforms.InterpolationMode.BICUBIC),
+            ]
+        else:
+            test_transform = []
+
+        test_transform = transforms.Compose(test_transform + [
             transforms.ToTensor(),
             transforms.Normalize(mean, std)
         ])
