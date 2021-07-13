@@ -43,6 +43,10 @@ flags.DEFINE_string (name = 'dataDir'     , default = "~/.datasets", help = "mai
 flags.DEFINE_integer(name = 'batchSize'   , default = 256          , help = "batch size")
 flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = availableDatasets.keys(), help="Dataset")
 
+
+flags.DEFINE_integer(name = 'imageSize'   , default = None          , help = "resize images after augmentation")
+
+
 flags.DEFINE_bool   (name = "flip"       , default = False        , help = "flip horizontally")
 flags.DEFINE_bool   (name = "crop"       , default = False        , help = "crop 32x32 padding 4")
 flags.DEFINE_bool   (name = "cut"        , default = False        , help = "cutout")
@@ -76,6 +80,11 @@ class DataLoader:
             transform_list.append(Cutout())
         if FLAGS.crop and self.datasetName in ["CIFAR10","CIFAR100"]:
             transform_list.append(torchvision.transforms.RandomCrop(size=(32, 32), padding=4))
+
+        if FLAGS.imageSize is not None:
+            transform_list += [
+                transforms.Resize(FLAGS.imageSize, interpolation = torchvision.transforms.InterpolationMode.BICUBIC),
+            ]
 
         transform_list += [
             transforms.ToTensor(),
