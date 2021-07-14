@@ -3,10 +3,14 @@ import torchvision
 import torchvision.transforms as transforms
 import os
 from .augmentation import AutoAugment, cutout
-
+import numpy as np
 
 from absl import flags
 
+def worker_init_fn(id):
+    """ manually seed each workers np random generator. see https://github.com/pytorch/pytorch/issues/5059"""
+    uint64_seed = torch.initial_seed()
+    np.random.seed([uint64_seed >> 32, uint64_seed & 0xffff_ffff])
 
 class ImageNet(torchvision.datasets.ImageFolder):
     def __init__(self, root, train = True, download = None, transform = []):
@@ -109,8 +113,8 @@ class DataLoader:
         train_set = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=train_transform)
         test_set  = self.dataset(root=FLAGS.dataDir, train=False, download=True, transform=test_transform)
 
-        self.train = torch.utils.data.DataLoader(train_set, batch_size=FLAGS.batchSize, shuffle=True , num_workers=FLAGS.dataThreads)
-        self.test  = torch.utils.data.DataLoader(test_set , batch_size=FLAGS.batchSize, shuffle=False, num_workers=FLAGS.dataThreads)
+        self.train = torch.utils.data.DataLoader(train_set, batch_size=FLAGS.batchSize, shuffle=True , num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn)
+        self.test  = torch.utils.data.DataLoader(test_set , batch_size=FLAGS.batchSize, shuffle=False, num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn)
 
     def _get_statistics(self):
         data = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=transforms.ToTensor())
