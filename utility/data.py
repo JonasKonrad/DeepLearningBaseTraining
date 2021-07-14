@@ -13,7 +13,7 @@ class ImageNet(torchvision.datasets.ImageFolder):
         if train:
             dir = os.path.join(root, 'train')
             transform.transforms = [
-                transforms.RandomResizedCrop(224, scale=(1., 1.), ratio=(1.,1.))
+                transforms.RandomResizedCrop(FLAGS.imageSize if FLAGS.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
                 ] + transform.transforms
         else:
             dir = os.path.join(root, 'val')
@@ -21,6 +21,8 @@ class ImageNet(torchvision.datasets.ImageFolder):
                 transforms.Resize(256),
                 transforms.CenterCrop(224),
                 ] + transform.transforms
+            if FLAGS.imageSize is not None:
+                transform.transforms.insert(2, transforms.Resize(FLAGS.imageSize))
 
         super(ImageNet, self).__init__(dir, transform = transform)
 
