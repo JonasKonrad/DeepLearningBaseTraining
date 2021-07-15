@@ -61,7 +61,7 @@ flags.DEFINE_bool   (name = "autoAugment", default = False        , help = "auto
 
 
 class DataLoader:
-    def __init__(self):
+    def __init__(self, num_replicas = 1, rank = 1):
         self.datasetName = FLAGS.dataset
         try:
             self.dataset, self.numClasses = availableDatasets[self.datasetName]
@@ -113,8 +113,11 @@ class DataLoader:
         train_set = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=train_transform)
         test_set  = self.dataset(root=FLAGS.dataDir, train=False, download=True, transform=test_transform)
 
-        self.train = torch.utils.data.DataLoader(train_set, batch_size=FLAGS.batchSize, shuffle=True , num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn)
-        self.test  = torch.utils.data.DataLoader(test_set , batch_size=FLAGS.batchSize, shuffle=False, num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn)
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True )#, num_replicas=num_replicas, rank=rank)
+        test_sampler  = torch.utils.data.distributed.DistributedSampler(test_set , shuffle=False)#, num_replicas=num_replicas, rank=rank)
+
+        self.train = torch.utils.data.DataLoader(train_set, batch_size=FLAGS.batchSize, num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn, sampler = train_sampler)
+        self.test  = torch.utils.data.DataLoader(test_set , batch_size=FLAGS.batchSize, num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn, sampler = test_sampler)
 
     def _get_statistics(self):
         data = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=transforms.ToTensor())
