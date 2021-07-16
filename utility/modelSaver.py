@@ -1,4 +1,3 @@
-import shutil
 import os
 import torch
 
@@ -11,34 +10,38 @@ flags.DEFINE_list   (name = "checkpointsList"   , default = []        , help = "
 
 
 class ModelSaver():
-    def __init__(self, model, optimizer):
-        self.model     = model
+    def __init__(self, model: torch.nn.Module, optimizer: torch.optim.Optimizer):
+        if isinstance(model, torch.nn.parallel.distributed.DistributedDataParallel):
+            self.model = model
+        else:
+            self.model = model.module
+
         self.optimizer = optimizer
         self.dir = os.path.join(FLAGS.logDir, FLAGS.logSubDir)
         self.bestTestAccur = 0
-        pass
 
     def __call__(self, epoch, testAccur):
-        if epoch in map(int, FLAGS.checkpointsList) or \
-            FLAGS.saveCheckpoint or \
-            (FLAGS.saveBestModel and self.bestTestAccur < testAccur):
-            
-            state = {'epoch': epoch,
-                     'modelState': self.model.state_dict(),
-                     'optimizerState': self.optimizer.state_dict(),
-                     'bestTestAccur': self.bestTestAccur,
-                     }
+        if torch.distributed.get_rank() == 0:
+            if epoch in map(int, FLAGS.checkpointsList) or \
+                FLAGS.saveCheckpoint or \
+                (FLAGS.saveBestModel and self.bestTestAccur < testAccur):
+                
+                state = {'epoch': epoch,
+                        'modelState': self.model.state_dict(),
+                        'optimizerState': self.optimizer.state_dict(),
+                        'bestTestAccur': self.bestTestAccur,
+                        }
 
-            if epoch in map(int, FLAGS.checkpointsList):
-                torch.save(state, os.path.join(self.dir, f"epoch_{epoch}.model"))
-            if FLAGS.saveCheckpoint:
-                if epoch == FLAGS.epochs - 1 and not FLAGS.keepLastCheckpoint:
-                    os.remove(os.path.join(self.dir, f"checkpoint.model"))
-                else:
-                    torch.save(state, os.path.join(self.dir, f"checkpoint.model"))
-            if FLAGS.saveBestModel and self.bestTestAccur < testAccur:
-                self.bestTestAccur = testAccur
-                torch.save(state, os.path.join(self.dir, f"bestModel.model"))
+                if epoch in map(int, FLAGS.checkpointsList):
+                    torch.save(state, os.path.join(self.dir, f"epoch_{epoch}.model"))
+                if FLAGS.saveCheckpoint:
+                    if epoch == FLAGS.epochs - 1 and not FLAGS.keepLastCheckpoint:
+                        os.remove(os.path.join(self.dir, f"checkpoint.model"))
+                    else:
+                        torch.save(state, os.path.join(self.dir, f"checkpoint.model"))
+                if FLAGS.saveBestModel and self.bestTestAccur < testAccur:
+                    self.bestTestAccur = testAccur
+                    torch.save(state, os.path.join(self.dir, f"bestModel.model"))
 
     def loadLast(self):
         lastEpoch = -1
@@ -53,6 +56,7 @@ class ModelSaver():
 
 
     def loadModel(self, filename):
+        #@TODO save and load rnd state
         state = torch.load(os.path.join(self.dir, filename))
 
         print(f"Loading from epoch {state['epoch']} (File: {filename}).")

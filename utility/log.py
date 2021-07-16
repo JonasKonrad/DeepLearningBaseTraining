@@ -1,5 +1,6 @@
 from torch.utils.tensorboard import SummaryWriter
 import time
+import torch
 
 from absl import flags
 FLAGS = flags.FLAGS
@@ -58,24 +59,26 @@ class Log:
         self.loading_bar = LoadingBar(length=(self.columnLen+1)*len(self.showMetricsTest)-3)
 
     def train(self, epoch, len_dataset: int) -> None:
-        self.epoch = epoch
-        if self.epoch == 1:
-            self._print_header()
+        if torch.distributed.get_rank() == 0:
+            self.epoch = epoch
+            if self.epoch == 1:
+                self._print_header()
 
-        self.is_train = True
-        self._reset(len_dataset)
+            self.is_train = True
+            self._reset(len_dataset)
 
     def eval(self, len_dataset: int) -> None:
-        self.flush()
-        self.is_train = False
+        if torch.distributed.get_rank() == 0:
+            self.flush()
+            self.is_train = False
 
-        for name, val in self.state.items():
-            if self.config[name]["logTrain"]:
-                self.writer.add_scalar(f'{name}/train', val / self.steps, self.epoch)
-        self.writer.add_scalar('LR',self.learning_rate, self.epoch)
-        self.writer.flush()
+            for name, val in self.state.items():
+                if self.config[name]["logTrain"]:
+                    self.writer.add_scalar(f'{name}/train', val / self.steps, self.epoch)
+            self.writer.add_scalar('LR',self.learning_rate, self.epoch)
+            self.writer.flush()
 
-        self._reset(len_dataset)
+            self._reset(len_dataset)
 
     def evalEnd(self) -> None:
         #print new line
@@ -91,10 +94,18 @@ class Log:
         for key, log in logs.items():
             if key not in self.state:
                 self._addMetric({"name": key})
-            self.state[key] += log.sum().item()
 
-        self.steps   += logs["loss"].size(0)
-        self.batches += 1
+            logSum = log.sum()
+            torch.distributed.reduce(logSum, 0)
+            if torch.distributed.get_rank() == 0:
+                self.state[key] += logSum.item()
+
+        newSteps = torch.Tensor([logs["loss"].size(0)]).cuda(torch.distributed.get_rank())
+        torch.distributed.reduce(newSteps, 0)
+
+        if torch.distributed.get_rank() == 0:
+            self.steps   += newSteps.item()
+            self.batches += 1
 
         if self.commandLine and self.batches % self.logEach == self.logEach - 1:
             self.flush()

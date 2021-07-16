@@ -2,8 +2,6 @@ import os
 import sys
 import torch
 import json
-import torch.multiprocessing as mp
-import torch.distributed as dist
 
 from absl import flags
 from absl import app
@@ -40,7 +38,7 @@ flags.DEFINE_integer(name = "world_size" , default = 1          , help = "")
 def train() -> None:
     log = Log(logDir = logDir)
 
-    dist.init_process_group(backend="nccl", init_method="env://", world_size=FLAGS.world_size, rank=FLAGS.local_rank)
+    torch.distributed.init_process_group(backend="nccl", init_method="env://", world_size=FLAGS.world_size, rank=FLAGS.local_rank)
 
     localGPU = FLAGS.local_rank % FLAGS.gpus
     torch.cuda.set_device(localGPU)
@@ -48,9 +46,10 @@ def train() -> None:
     dataset = DataLoader(num_replicas = 1, rank = 1)
 
     model: torch.nn.Module = modelDict[FLAGS.model](num_classes=dataset.numClasses)
-    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-    model = torch.nn.DataParallel(model)
     model = model.cuda(localGPU)
+    if not FLAGS.freezeBN:
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    model = torch.nn.parallel.DistributedDataParallel(model)
 
 
     optimizer = SGD(model.parameters())
@@ -64,6 +63,8 @@ def train() -> None:
         startEpoch += 1
         if startEpoch >= FLAGS.epochs:
             raise RuntimeError(f"Can't cotinue model from epoch {startEpoch} to max epoch {FLAGS.epochs}.")
+    else:
+        modelSaver(0, 0)
 
     for epoch in range(startEpoch, FLAGS.epochs+1):
         dataset.train.sampler.set_epoch(epoch)
@@ -131,7 +132,7 @@ if __name__ == "__main__":
 
     FLAGS.local_rank = os.getenv("SLURM_PROCID", FLAGS.local_rank)
     FLAGS.gpus       = os.getenv("GPUS_PER_NODE", FLAGS.gpus)
-    FLAGS.nodes      = os.getenv("SLURM_JOB_NUM_NODES", 1)
+    FLAGS.nodes      = os.getenv("SLURM_JOB_NUM_NODES", FLAGS.nodes)
     FLAGS.world_size = FLAGS.gpus * FLAGS.nodes
 
     if FLAGS.local_rank == 0:
