@@ -1,0 +1,75 @@
+The following modules were not unloaded:
+  (Use "module --force purge" to unload all):
+
+  1) palma/2020b
+Traceback (most recent call last):
+  File "main.py", line 143, in <module>
+    train()
+  File "main.py", line 41, in train
+    torch.distributed.init_process_group(backend="nccl", init_method="env://", world_size=FLAGS.world_size, rank=FLAGS.local_rank)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/torch/distributed/distributed_c10d.py", line 517, in init_process_group
+    rendezvous_iterator = rendezvous(
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/torch/distributed/rendezvous.py", line 54, in rendezvous
+    raise RuntimeError("`rank` must be an integer. {}".format(rank))
+RuntimeError: `rank` must be an integer. 0
+Traceback (most recent call last):
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/tensorboard/compat/tensorflow_stub/io/gfile.py", line 192, in makedirs
+    os.makedirs(path)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/os.py", line 223, in makedirs
+    mkdir(name, mode)
+FileExistsError: [Errno 17] File exists: '../logs/pre_bs_1024_s_600'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "main.py", line 143, in <module>
+    train()
+  File "main.py", line 39, in train
+    log = Log(logDir = logDir)
+  File "/scratch/tmp/m_beck52/testing/runs_distributed/run_1/utility/log.py", line 24, in __init__
+    self.writer = SummaryWriter(logDir)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/torch/utils/tensorboard/writer.py", line 220, in __init__
+    self._get_file_writer()
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/torch/utils/tensorboard/writer.py", line 250, in _get_file_writer
+Traceback (most recent call last):
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/tensorboard/compat/tensorflow_stub/io/gfile.py", line 192, in makedirs
+    os.makedirs(path)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/os.py", line 223, in makedirs
+    mkdir(name, mode)
+FileExistsError: [Errno 17] File exists: '../logs/pre_bs_1024_s_600'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "main.py", line 143, in <module>
+    train()
+  File "main.py", line 39, in train
+    log = Log(logDir = logDir)
+  File "/scratch/tmp/m_beck52/testing/runs_distributed/run_1/utility/log.py", line 24, in __init__
+    self.writer = SummaryWriter(logDir)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/torch/utils/tensorboard/writer.py", line 220, in __init__
+    self._get_file_writer()
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/torch/utils/tensorboard/writer.py", line 250, in _get_file_writer
+    self.file_writer = FileWriter(self.log_dir, self.max_queue,
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/torch/utils/tensorboard/writer.py", line 60, in __init__
+    self.event_writer = EventFileWriter(
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/tensorboard/summary/writer/event_file_writer.py", line 73, in __init__
+    tf.io.gfile.makedirs(logdir)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/tensorboard/compat/tensorflow_stub/io/gfile.py", line 665, in makedirs
+    return get_filesystem(path).makedirs(path)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/tensorboard/compat/tensorflow_stub/io/gfile.py", line 194, in makedirs
+    raise errors.AlreadyExistsError(
+tensorboard.compat.tensorflow_stub.errors.AlreadyExistsError: Directory already exists
+    self.file_writer = FileWriter(self.log_dir, self.max_queue,
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/torch/utils/tensorboard/writer.py", line 60, in __init__
+    self.event_writer = EventFileWriter(
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/tensorboard/summary/writer/event_file_writer.py", line 73, in __init__
+    tf.io.gfile.makedirs(logdir)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/tensorboard/compat/tensorflow_stub/io/gfile.py", line 665, in makedirs
+    return get_filesystem(path).makedirs(path)
+  File "/home/m/m_beck52/envs/pytorch/lib/python3.8/site-packages/tensorboard/compat/tensorflow_stub/io/gfile.py", line 194, in makedirs
+    raise errors.AlreadyExistsError(
+tensorboard.compat.tensorflow_stub.errors.AlreadyExistsError: Directory already exists
+srun: error: r12n37: task 0: Exited with exit code 1
+srun: error: r12n39: task 1: Exited with exit code 1
+srun: error: r12n40: task 2: Exited with exit code 1
