@@ -1,12 +1,11 @@
 #!/bin/bash
 
-GPUS_PER_NODE=3
  
 #SBATCH --job-name=TL___RUN__         # the name of your job
 #SBATCH --export=NONE               # Start with a clean environment
-#SBATCH --nodes=$GPUS_PER_NODE                   # the number of nodes you want to reserve
+#SBATCH --nodes=3                   # the number of nodes you want to reserve
 #SBATCH --gres=gpu:1 
-#SBATCH --ntasks-per-node=$GPUS_PER_NODE        # the number of CPU cores per node
+#SBATCH --ntasks-per-node=1        # the number of CPU cores per node
 #SBATCH --cpus-per-task=12       
 #SBATCH --mem=60G                   # how much memory is needed per node (units can be: K, M, G, T)
 #SBATCH --partition=gputitanrtx          # on which partition to submit the job
@@ -16,6 +15,7 @@ GPUS_PER_NODE=3
 #SBATCH --mail-user=m_beck52@uni-muenster.de # your mail address
 #SBATCH --nice=80
  
+GPUS_PER_NODE=1
 
 # The first hostname is the master address
 master_addr=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)

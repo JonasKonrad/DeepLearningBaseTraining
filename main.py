@@ -130,9 +130,9 @@ if __name__ == "__main__":
 
     initialize() #set up seed and cudnn
 
-    FLAGS.local_rank = os.getenv("SLURM_PROCID", FLAGS.local_rank)
-    FLAGS.gpus       = os.getenv("GPUS_PER_NODE", FLAGS.gpus)
-    FLAGS.nodes      = os.getenv("SLURM_JOB_NUM_NODES", FLAGS.nodes)
+    FLAGS.local_rank = int(os.getenv("SLURM_PROCID", FLAGS.local_rank))
+    FLAGS.gpus       = int(os.getenv("GPUS_PER_NODE", FLAGS.gpus))
+    FLAGS.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", FLAGS.nodes))
     FLAGS.world_size = FLAGS.gpus * FLAGS.nodes
 
     if FLAGS.local_rank == 0:
