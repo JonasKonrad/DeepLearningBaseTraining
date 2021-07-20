@@ -100,7 +100,7 @@ class Log:
             if torch.distributed.get_rank() == 0:
                 self.state[key] += logSum.item()
 
-        newSteps = torch.Tensor([logs["loss"].size(0)]).cuda(torch.distributed.get_rank())
+        newSteps = torch.Tensor([logs["loss"].size(0)]).cuda(torch.distributed.get_local_rank() % torch.cuda.device_count())
         torch.distributed.reduce(newSteps, 0)
 
         if torch.distributed.get_rank() == 0:

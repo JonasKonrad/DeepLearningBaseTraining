@@ -29,7 +29,6 @@ flags.DEFINE_integer(name = "epochs"      , default = 400          , help = "Tot
 flags.DEFINE_bool   (name = "contin"      , default = False        , help = "Whether to set rnd seed.")
 flags.DEFINE_bool   (name = "freezeBN"    , default = False        , help = "Whether to freezeBN.")
 
-flags.DEFINE_integer(name = "gpus"       , default = 1          , help = "gpus per node. catched form 'GPUS_PER_NODE' if started with slurm")
 flags.DEFINE_integer(name = "local_rank" , default = 0         , help = "local process rank. catched form 'SLURM_PROCID' if started with slurm")
 flags.DEFINE_integer(name = "nodes"      , default = 1          , help = "")
 flags.DEFINE_integer(name = "world_size" , default = 1          , help = "")
@@ -40,7 +39,7 @@ def train() -> None:
 
     torch.distributed.init_process_group(backend="nccl", init_method="env://", world_size=FLAGS.world_size, rank=FLAGS.local_rank)
 
-    localGPU = FLAGS.local_rank % FLAGS.gpus
+    localGPU = FLAGS.local_rank % torch.cuda.device_count()
     torch.cuda.set_device(localGPU)
 
     dataset = DataLoader(num_replicas = 1, rank = 1)
@@ -131,9 +130,8 @@ if __name__ == "__main__":
     initialize() #set up seed and cudnn
 
     FLAGS.local_rank = int(os.getenv("SLURM_PROCID", FLAGS.local_rank))
-    FLAGS.gpus       = int(os.getenv("GPUS_PER_NODE", FLAGS.gpus))
     FLAGS.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", FLAGS.nodes))
-    FLAGS.world_size = FLAGS.gpus * FLAGS.nodes
+    FLAGS.world_size = torch.cuda.device_count() * FLAGS.nodes
 
     if FLAGS.local_rank == 0:
         os.makedirs(logDir, exist_ok=True)
