@@ -81,13 +81,14 @@ class Log:
             self._reset(len_dataset)
 
     def evalEnd(self) -> None:
-        #print new line
-        self.flush()
-        print()
-        for name, val in self.state.items():
-            if self.config[name]["logTest"]:
-                self.writer.add_scalar(f'{name}/test', val / self.steps, self.epoch)
-        self.writer.flush()
+        if torch.distributed.get_rank() == 0:
+            #print new line
+            self.flush()
+            print()
+            for name, val in self.state.items():
+                if self.config[name]["logTest"]:
+                    self.writer.add_scalar(f'{name}/test', val / self.steps, self.epoch)
+            self.writer.flush()
 
     def __call__(self, logs, learning_rate: float = None) -> None:
         self.learning_rate = learning_rate
@@ -106,12 +107,11 @@ class Log:
         if torch.distributed.get_rank() == 0:
             self.steps   += newSteps.item()
             self.batches += 1
-
-        if self.commandLine and self.batches % self.logEach == self.logEach - 1:
-            self.flush()
+            if self.commandLine and self.batches % self.logEach == self.logEach - 1:
+                self.flush()
 
     def getScalar(self, name):
-        return self.state[name] / self.steps
+        return self.state[name] / self.steps if self.steps != 0 else None
 
     def flush(self) -> None:
         if self.is_train:
@@ -130,6 +130,7 @@ class Log:
     def _reset(self, len_dataset: int) -> None:
         if self.is_train:
             self.start_time = time.time()
+        print(f"reset! train: {self.is_train}. steps processed: {self.steps}")
         self.steps = 0
         self.batches = 0
         self.len_dataset = len_dataset
