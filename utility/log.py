@@ -21,7 +21,7 @@ class Log:
         self.steps = 0
         self.state = {}
 
-        self.writer = SummaryWriter(logDir)
+        self.writer = SummaryWriter(logDir) if torch.distributed.get_rank() == 0 else None
     
         self.config = {}
         self.defaultConfig = {
@@ -130,7 +130,6 @@ class Log:
     def _reset(self, len_dataset: int) -> None:
         if self.is_train:
             self.start_time = time.time()
-        print(f"reset! train: {self.is_train}. steps processed: {self.steps}")
         self.steps = 0
         self.batches = 0
         self.len_dataset = len_dataset
