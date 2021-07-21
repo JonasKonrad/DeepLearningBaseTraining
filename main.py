@@ -35,12 +35,12 @@ flags.DEFINE_integer(name = "world_size" , default = 1          , help = "")
 
 
 def train() -> None:
-    log = Log(logDir = logDir)
 
     torch.distributed.init_process_group(backend="nccl", init_method="env://", world_size=FLAGS.world_size, rank=FLAGS.local_rank)
-
     localGPU = FLAGS.local_rank % torch.cuda.device_count()
     torch.cuda.set_device(localGPU)
+
+    log = Log(logDir = logDir)
 
     dataset = DataLoader(num_replicas = 1, rank = 1)
 
