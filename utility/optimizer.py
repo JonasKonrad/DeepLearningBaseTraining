@@ -2,27 +2,28 @@ import torch
 
 from absl import flags
 FLAGS = flags.FLAGS
-flags.DEFINE_float  (name = "weightDecay" , default = 0.00001       , help = "L2 weight decay.")
-flags.DEFINE_float  (name = "momentum"    , default = 0.9          , help = "SGD Momentum.")
-flags.DEFINE_enum   (name = "optimzer"   , default = "SGD"   , enum_values = ["SGD"], help="Dataset")
+flags.DEFINE_float  (name = "weightDecay"  , default = 0.00001       , help = "L2 weight decay.")
+flags.DEFINE_float  (name = "momentum"     , default = 0.9          , help = "SGD Momentum.")
+flags.DEFINE_enum   (name = "optimzer"     , default = "SGD"   , enum_values = ["SGD"], help="Dataset")
 flags.DEFINE_integer(name = "batchSizeMult", default = 1 , help = "Effective Batch Size is multiplied by this factor by applying gradient step only after 'batchSizeMult' iterations.")
+flags.DEFINE_bool   (name = "nesterov"     , default = True        , help = "Whether to use nesterov momentum in SGD.")
 
-class SGD(torch.optim.Optimizer):
+class SGD(torch.optim.SGD):
     def __init__(self, params, **kwargs):
         defaults = dict(lr           = FLAGS.learningRate,
                         momentum     = FLAGS.momentum,
                         weight_decay = FLAGS.weightDecay,
+                        nesterov     = FLAGS.nesterov,
                         **kwargs)
-        super(SGD, self).__init__(params, defaults)
-        self.base_optimizer = torch.optim.SGD(self.param_groups, **kwargs)
-
+        super(SGD, self).__init__(params, **defaults)
         self.batchSizeMult = FLAGS.batchSizeMult
         self.batchCounter = 0
 
+    @torch.no_grad()
     def step(self):
         if self.batchSizeMult == 1:
             #handle == 1 case seperately for better performance 
-            self.base_optimizer.step()
+            super(SGD, self).step()
             self.zero_grad()
         else:
             self.batchCounter += 1
@@ -34,13 +35,5 @@ class SGD(torch.optim.Optimizer):
                         if p.grad is None: continue
                         p.grad.div_(self.batchSizeMult)
 
-                self.base_optimizer.step()
+                super(SGD, self).step()
                 self.zero_grad()
-
-    def load_state_dict(self, state_dict):
-        super(SGD, self).load_state_dict(state_dict)
-        self.base_optimizer.__setstate__(self.__getstate__())
-
-    def state_dict(self):
-        return self.base_optimizer.state_dict()
-
