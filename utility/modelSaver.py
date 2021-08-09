@@ -57,7 +57,7 @@ class ModelSaver():
 
     def loadModel(self, filename):
         #@TODO save and load rnd state
-        state = torch.load(os.path.join(self.dir, filename))
+        state = torch.load(os.path.join(self.dir, filename),  map_location='cpu')
 
         print(f"Loading from epoch {state['epoch']} (File: {filename}).")
 
