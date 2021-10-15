@@ -37,7 +37,7 @@ class ModelSaver():
                 if FLAGS.saveCheckpoint:
                     if epoch == FLAGS.epochs - 1 and not FLAGS.keepLastCheckpoint:
                         os.remove(os.path.join(self.dir, f"checkpoint.model"))
-                    elif epoch % FLAGS.saveCheckpointInterval and FLAGS.saveCheckpointInterval > 0:
+                    elif FLAGS.saveCheckpointInterval > 0 and epoch % FLAGS.saveCheckpointInterval == 0:
                         torch.save(state, os.path.join(self.dir, f"checkpoint_{epoch}.model"))
                     else:
                         torch.save(state, os.path.join(self.dir, f"checkpoint.model"))
