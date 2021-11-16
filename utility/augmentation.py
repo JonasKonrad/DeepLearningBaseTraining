@@ -7,6 +7,7 @@ from PIL import Image, ImageEnhance, ImageOps
 
 class AutoAugment(object):
     def __init__(self):
+        # original paper policies
         # self.policies = [
         #     ['Invert', 0.1, 7, 'Contrast', 0.2, 6],
         #     ['Rotate', 0.7, 2, 'TranslateX', 0.3, 9],
@@ -35,7 +36,7 @@ class AutoAugment(object):
         #     ['TranslateY', 0.7, 9, 'AutoContrast', 0.9, 1],
         # ]
 
-        ### SAM policies ###
+        ### SAM policies ### https://github.com/google-research/sam/blob/main/autoaugment/policies.py
         exp0_0 = [
             [('Invert', 0.1, 7), ('Contrast', 0.2, 6)],
             [('Rotate', 0.7, 2), ('TranslateX', 0.3, 9)],

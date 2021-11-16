@@ -15,6 +15,12 @@ from utility.LRScheduler import getLRScheduler, _LRScheduler
 from utility.optimizer import SGD
 from utility.modelSaver import ModelSaver
 
+
+"""
+run:
+    python -m torch.distributed.run main.py
+"""
+
 """
 @TODO:
     - add model summary
@@ -129,7 +135,7 @@ if __name__ == "__main__":
 
     initialize() #set up seed and cudnn
 
-    FLAGS.local_rank = int(os.getenv("SLURM_PROCID", FLAGS.local_rank))
+    FLAGS.local_rank = int(os.getenv("LOCAL_RANK", os.getenv("SLURM_PROCID", FLAGS.local_rank)))
     FLAGS.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", FLAGS.nodes))
     FLAGS.world_size = torch.cuda.device_count() * FLAGS.nodes
 
