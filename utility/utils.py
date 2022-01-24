@@ -12,7 +12,7 @@ def initialize():
     if FLAGS.rndSeed:
         seed = random.getrandbits(32)
     else:
-        seed = 42
+        seed = 42 + FLAGS.local_rank
 
     random.seed(seed)
     torch.manual_seed(seed)
