@@ -10,7 +10,7 @@ flags.DEFINE_bool   (name = "deterministic" , default = False        , help = "W
 
 def initialize():
     if FLAGS.rndSeed:
-        seed = random.random()
+        seed = random.getrandbits(32)
     else:
         seed = 42
 

@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 import os
 from .augmentation import AutoAugment, cutout
 import numpy as np
+import random
 
 from absl import flags
 
@@ -112,10 +113,13 @@ class DataLoader:
 
         train_set = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=train_transform)
         test_set  = self.dataset(root=FLAGS.dataDir, train=False, download=True, transform=test_transform)
-
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True )#, num_replicas=num_replicas, rank=rank)
-        test_sampler  = torch.utils.data.distributed.DistributedSampler(test_set , shuffle=False)#, num_replicas=num_replicas, rank=rank)
-
+        
+        # to get random order of train data the seed has to be set manually. the seed value must be constant among all processes. 
+        seed = torch.tensor(random.getrandbits(32)).cuda(FLAGS.local_rank % torch.cuda.device_count())
+        torch.distributed.broadcast(seed, src = 0)
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True , seed = seed.data)
+        test_sampler  = torch.utils.data.distributed.DistributedSampler(test_set , shuffle=False)
+        
         self.train = torch.utils.data.DataLoader(train_set, batch_size=FLAGS.batchSize, num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn, sampler = train_sampler)
         self.test  = torch.utils.data.DataLoader(test_set , batch_size=FLAGS.batchSize, num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn, sampler = test_sampler)
 
