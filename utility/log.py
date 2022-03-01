@@ -2,18 +2,18 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 import torch
 
-from absl import flags
-FLAGS = flags.FLAGS
-flags.DEFINE_bool   (name = "verbose"     , default = False        , help = "print to terminal")
-flags.DEFINE_integer(name = "logEach"     , default = 1            , help = "Iterations to log during training.")
+from utility.args import Args
+
+Args.add_argument("--verbose", type=bool, help="print to terminal")
+Args.add_argument("--logEach", type=int, help="Iterations to log during training.")
 
 class Log:
     def __init__(self, metricConfig = [], logDir = "logs"):
         """
         metricConfig: list of dicts. each dict represents one metric. dict can contain args: name, logTrain, logTest, showTrain, showTest, fmt
         """
-        self.commandLine = FLAGS.verbose
-        self.logEach = FLAGS.logEach
+        self.commandLine = Args.verbose
+        self.logEach = Args.logEach
 
         self.columnLen = 15
         self.epoch = -1

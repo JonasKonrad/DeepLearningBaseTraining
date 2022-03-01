@@ -1,13 +1,13 @@
 import os
 import torch
+from utility.args import Args
 
-from absl import flags
-FLAGS = flags.FLAGS
-flags.DEFINE_bool   (name = "saveCheckpoint"        , default = False     , help = "save model after each epoch (delete after next epoch)")
-flags.DEFINE_bool   (name = "saveBestModel"         , default = False     , help = "keep best model")
-flags.DEFINE_bool   (name = "keepLastCheckpoint"    , default = False     , help = "keep checkpoint after last epoch is done")
-flags.DEFINE_list   (name = "checkpointsList"       , default = []        , help = "keep checkpoint at specific epochs")
-flags.DEFINE_integer(name = "saveCheckpointInterval", default = 0         , help = "save model between interval")
+Args.add_argument("--saveCheckpoint", type=bool, help="save model after each epoch (delete after next epoch)")
+Args.add_argument("--saveBestModel", type=bool, help="keep best model")
+Args.add_argument("--keepLastCheckpoint", type=bool, help="keep checkpoint after last epoch is done")
+Args.add_argument("--checkpointsList", type=int, nargs = "*", help="keep checkpoint at specific epochs")
+Args.add_argument("--saveCheckpointInterval", type=int, help="save model between interval")
+
 
 class ModelSaver():
     def __init__(self, model: torch.nn.Module, optimizer: torch.optim.Optimizer):
@@ -17,14 +17,14 @@ class ModelSaver():
             self.model = model.module
 
         self.optimizer = optimizer
-        self.dir = os.path.join(FLAGS.logDir, FLAGS.logSubDir)
+        self.dir = os.path.join(Args.logDir, Args.logSubDir)
         self.bestTestAccur = 0
 
     def __call__(self, epoch, testAccur):
         if torch.distributed.get_rank() == 0:
-            if epoch in map(int, FLAGS.checkpointsList) or \
-                FLAGS.saveCheckpoint or \
-                (FLAGS.saveBestModel and self.bestTestAccur < testAccur):
+            if epoch in map(int, Args.checkpointsList) or \
+                Args.saveCheckpoint or \
+                (Args.saveBestModel and self.bestTestAccur < testAccur):
                 
                 state = {'epoch': epoch,
                         'modelState': self.model.state_dict(),
@@ -32,16 +32,16 @@ class ModelSaver():
                         'bestTestAccur': self.bestTestAccur,
                         }
 
-                if epoch in map(int, FLAGS.checkpointsList):
+                if epoch in map(int, Args.checkpointsList):
                     torch.save(state, os.path.join(self.dir, f"epoch_{epoch}.model"))
-                if FLAGS.saveCheckpoint:
-                    if epoch == FLAGS.epochs - 1 and not FLAGS.keepLastCheckpoint:
+                if Args.saveCheckpoint:
+                    if epoch == Args.epochs - 1 and not Args.keepLastCheckpoint:
                         os.remove(os.path.join(self.dir, f"checkpoint.model"))
-                    elif FLAGS.saveCheckpointInterval > 0 and epoch % FLAGS.saveCheckpointInterval == 0:
+                    elif Args.saveCheckpointInterval > 0 and epoch % Args.saveCheckpointInterval == 0:
                         torch.save(state, os.path.join(self.dir, f"checkpoint_{epoch}.model"))
                     else:
                         torch.save(state, os.path.join(self.dir, f"checkpoint.model"))
-                if FLAGS.saveBestModel and self.bestTestAccur < testAccur:
+                if Args.saveBestModel and self.bestTestAccur < testAccur:
                     self.bestTestAccur = testAccur
                     torch.save(state, os.path.join(self.dir, f"bestModel.model"))
 

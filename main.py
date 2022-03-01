@@ -3,9 +3,6 @@ import sys
 import torch
 import json
 
-from absl import flags
-from absl import app
-
 from models import modelDict
 from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
@@ -14,6 +11,7 @@ from utility.utils import initialize
 from utility.LRScheduler import getLRScheduler, _LRScheduler
 from utility.optimizer import SGD
 from utility.modelSaver import ModelSaver
+from utility.args import Args
 
 
 """
@@ -25,66 +23,64 @@ run:
 @TODO:
     - add model summary
     - check correct rnd seeding; save rnd seed
-    - read defaults from input file
-    - get rid of flags (add own short argparse module)
     - get rid of tensorboard log files (hdf5 files instead?)
     - typing...
     - reintroduce cpu support
+    - implement PEP 8
 """
 
-FLAGS = flags.FLAGS
-app.define_help_flags()
-flags.DEFINE_string (name = "logDir"      , default = "../logs"    , help = "main directory to store logs")
-flags.DEFINE_string (name = "logSubDir"   , default = "test"       , help = "subdir in logDir to store logs for this run")
-flags.DEFINE_integer(name = "epochs"      , default = 400          , help = "Total number of epochs.")
-flags.DEFINE_bool   (name = "contin"      , default = False        , help = "Whether to set rnd seed.")
-flags.DEFINE_bool   (name = "freezeBN"    , default = False        , help = "Whether to freezeBN.")
 
-flags.DEFINE_integer(name = "local_rank" , default = 0         , help = "local process rank. catched form 'SLURM_PROCID' if started with slurm")
-flags.DEFINE_integer(name = "nodes"      , default = 1          , help = "")
-flags.DEFINE_integer(name = "world_size" , default = 1          , help = "")
+Args.add_argument("--logDir", type=str, help="main directory to store logs")
+Args.add_argument("--logSubDir", type=str, help="subdir in logDir to store logs for this run")
+Args.add_argument("--epochs", type=int, help="Total number of epochs")
+Args.add_argument("--contin", type=bool, help="Whether to continue from checkpoint.")
+Args.add_argument("--freezeBN", type=bool, help="Whether to freezeBN.")
+
+Args.add_argument("--local_rank", type=int, help="local process rank. catched form 'SLURM_PROCID' if started with slurm")
+Args.add_argument("--nodes", type=int, help="")
+Args.add_argument("--world_size", type=int, help="")
 
 
 def train() -> None:
 
-    torch.distributed.init_process_group(backend="nccl", init_method="env://", world_size=FLAGS.world_size, rank=FLAGS.local_rank)
-    localGPU = FLAGS.local_rank % torch.cuda.device_count()
+    torch.distributed.init_process_group(backend="nccl", init_method="env://", world_size=Args.world_size, rank=Args.local_rank)
+    localGPU = Args.local_rank % torch.cuda.device_count()
     torch.cuda.set_device(localGPU)
 
     log = Log(logDir = logDir)
 
     dataset = DataLoader(num_replicas = 1, rank = 1)
 
-    model: torch.nn.Module = modelDict[FLAGS.model](num_classes=dataset.numClasses)
+    model: torch.nn.Module = modelDict[Args.model](num_classes=dataset.numClasses)
     model = model.cuda(localGPU)
-    if not FLAGS.freezeBN:
+    if not Args.freezeBN:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = torch.nn.parallel.DistributedDataParallel(model)
 
 
     optimizer = SGD(model.parameters())
-    # optimizer: torch.optim.Optimizer = optimizerDict[FLAGS.model](num_classes=dataset.numClasses)
+    # optimizer: torch.optim.Optimizer = optimizerDict[Args.model](num_classes=dataset.numClasses)
     lrScheduler: _LRScheduler = getLRScheduler(optimizer)
     modelSaver = ModelSaver(model = model, optimizer = optimizer)
     
     startEpoch = 1
-    if FLAGS.contin:
+    if Args.contin:
         startEpoch = modelSaver.loadModel("checkpoint.model")
         startEpoch += 1
         model = model.cuda(localGPU)
-        if startEpoch >= FLAGS.epochs:
-            raise RuntimeError(f"Can't cotinue model from epoch {startEpoch} to max epoch {FLAGS.epochs}.")
+        if startEpoch >= Args.epochs:
+            raise RuntimeError(f"Can't cotinue model from epoch {startEpoch} to max epoch {Args.epochs}.")
     else:
         modelSaver(0, 0)
 
-    for epoch in range(startEpoch, FLAGS.epochs+1):
+    for epoch in range(startEpoch, Args.epochs+1):
         dataset.train.sampler.set_epoch(epoch)
 
         model.train()
         numBatches = len(dataset.train)
         log.train(epoch, len_dataset=numBatches)
 
-        if FLAGS.freezeBN:
+        if Args.freezeBN:
             for m in model.modules():
                 if isinstance(m, torch.nn.BatchNorm2d):
                     m.training = False
@@ -126,28 +122,28 @@ def train() -> None:
 
 
 if __name__ == "__main__":
-    FLAGS(sys.argv)
+    Args.parse_args()
 
-    logDir = os.path.join(FLAGS.logDir, FLAGS.logSubDir)
+    logDir = os.path.join(Args.logDir, Args.logSubDir)
 
-    if FLAGS.contin:
+    if Args.contin:
         #first overwrite defaults with old parameters ..
         with open(os.path.join(logDir, "params.json"), "r") as file:
-            flagsDict = json.load(file)
-        FLAGS._set_attributes(**flagsDict)
-        #@TODO add validation of flags here
+            ArgsDict = json.load(file)
+        Args._set_attributes(**ArgsDict)
+        #@TODO add validation of Args here
         #... then set overwrite old parameters with new parameters
-        FLAGS(sys.argv)
+        Args(sys.argv)
 
     initialize() #set up seed and cudnn
 
-    FLAGS.local_rank = int(os.getenv("LOCAL_RANK", os.getenv("SLURM_PROCID", FLAGS.local_rank)))
-    FLAGS.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", FLAGS.nodes))
-    FLAGS.world_size = torch.cuda.device_count() * FLAGS.nodes
+    Args.local_rank = int(os.getenv("LOCAL_RANK", os.getenv("SLURM_PROCID", Args.local_rank)))
+    Args.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", Args.nodes))
+    Args.world_size = torch.cuda.device_count() * Args.nodes
 
-    if FLAGS.local_rank == 0:
+    if Args.local_rank == 0:
         os.makedirs(logDir, exist_ok=True)
         with open(os.path.join(logDir, "params.json"), "w") as file:
-            json.dump(FLAGS.flag_values_dict(), file, indent = 4)
+            json.dump(vars(Args.data), file, indent = 4)
 
     train()

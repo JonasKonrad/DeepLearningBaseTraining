@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from absl import flags
+from utility.args import Args
 
 
 sizesDict = {
@@ -13,8 +13,8 @@ sizesDict = {
 }
 
 
-FLAGS = flags.FLAGS
-flags.DEFINE_enum(name = "modelSize", default = "small", enum_values = sizesDict.keys(), help="")
+Args.add_argument("--modelSize", type=str, help="")
+
 
 class NetworkBlock(nn.Module):
     def __init__(self, inDimension, outDimension, dropRate=0.0, batchNorm = False):
@@ -40,10 +40,10 @@ class VanillaNet(nn.Module):
     def __init__(self, num_classes, inputSize = 32):
         super(VanillaNet, self).__init__()
 
-        self.batchNorm = FLAGS.BN
-        self.droprate = FLAGS.dropout
+        self.batchNorm = Args.BN
+        self.droprate = Args.dropout
 
-        self.sizes = sizesDict[FLAGS.modelSize]
+        self.sizes = sizesDict[Args.modelSize]
 
         self.block1 = NetworkBlock(3            , self.sizes[0], dropRate = self.droprate, batchNorm = self.batchNorm)
         self.block2 = NetworkBlock(self.sizes[0], self.sizes[1], dropRate = self.droprate, batchNorm = self.batchNorm)

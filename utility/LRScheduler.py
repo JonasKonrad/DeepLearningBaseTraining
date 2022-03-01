@@ -1,14 +1,14 @@
 import math
-from absl import flags
-FLAGS = flags.FLAGS
-flags.DEFINE_float  (name = "learningRate", default = 0.1               , help = "Base learning rate at the start of the training.")
-flags.DEFINE_list   (name = "lrScheduler"   , default = ["cos"]  , help = "list of learning rate schedulers")
+from utility.args import Args
+
+Args.add_argument("--learningRate", type=float, help="Base learning rate at the start of the training.")
+Args.add_argument("--lrScheduler", type=str, nargs = "*", help="list of learning rate schedulers")
 
 
 class _LRScheduler():
     def __init__(self, optimizer, last_epoch = -1):
         self.optimizer = optimizer
-        self.base_lrs = [FLAGS.learningRate for _ in optimizer.param_groups]
+        self.base_lrs = [Args.learningRate for _ in optimizer.param_groups]
         self.last_epoch = last_epoch
 
     def _calcFactor(self, progress):
@@ -36,24 +36,23 @@ class ConstLR(_LRScheduler):
     def _calcFactor(self, progress):
         self.factor = 1
 
-
-flags.DEFINE_integer(name = "LRScheduler_step_steps"   , default = 3              , help = "")
-flags.DEFINE_float(name = "LRScheduler_step_gamma"   , default = 0.2              , help = "")
+Args.add_argument("--LRScheduler_step_steps", type=float, help="")
+Args.add_argument("--LRScheduler_step_gamma", type=float, help="")
 class StepLR(_LRScheduler):
     def __init__(self, optimizer, steps = 3, last_epoch = -1):
         super(StepLR, self).__init__(optimizer, last_epoch = last_epoch)
-        self.step_size = FLAGS.epochs//(FLAGS.LRScheduler_step_steps+1)
-        self.gamma = FLAGS.LRScheduler_step_gamma
+        self.step_size = Args.epochs//(Args.LRScheduler_step_steps+1)
+        self.gamma = Args.LRScheduler_step_gamma
 
     def _calcFactor(self, progress):
         self.factor = self.gamma ** (self.last_epoch // self.step_size)
 
-flags.DEFINE_float  (name = "LRScheduler_exp_maxDecay"   , default = 0.01              , help = "Decay that is to be reached at the end of training.")
+Args.add_argument("--LRScheduler_exp_maxDecay", type=float, help="Decay that is to be reached at the end of training.")
 class ExponentialLR(_LRScheduler):
     def __init__(self, optimizer, last_epoch = -1):
         super(ExponentialLR, self).__init__(optimizer, last_epoch = last_epoch)
     
-        self.gamma = FLAGS.LRScheduler_exp_maxDecay**(1/FLAGS.epochs)
+        self.gamma = Args.LRScheduler_exp_maxDecay**(1/Args.epochs)
 
     def _calcFactor(self, progress):
         self.factor = self.gamma ** (self.last_epoch + progress)
@@ -61,19 +60,19 @@ class ExponentialLR(_LRScheduler):
 
 
 
-flags.DEFINE_float  (name = "LRScheduler_cos_periods"   , default = 0.5              , help = "Periods of cosine.")
+Args.add_argument("--LRScheduler_cos_periods", type=float, help="Periods of cosine.")
 class CosineLR(_LRScheduler):
     def __init__(self, optimizer, last_epoch = -1):
         super(CosineLR, self).__init__(optimizer, last_epoch = last_epoch)
 
-        self.epochsPerPeriod = FLAGS.epochs / FLAGS.LRScheduler_cos_periods
+        self.epochsPerPeriod = Args.epochs / Args.LRScheduler_cos_periods
 
     def _calcFactor(self, progress):
         self.factor = 0.5 * (1 + math.cos((self.last_epoch + progress) / self.epochsPerPeriod * 2*math.pi))
 
 
-flags.DEFINE_float  (name = "LRScheduler_WRN_T0"   , default = 50              , help = "Number of epochs for the first restart.")
-flags.DEFINE_float  (name = "LRScheduler_WRN_Tmult", default = 1.2               , help = "Factor by which the period length is increased after each restart.")
+Args.add_argument("--LRScheduler_WRN_T0", type=float, help="Number of epochs for the first restart.")
+Args.add_argument("--LRScheduler_WRN_Tmult", type=float, help="Factor by which the period length is increased after each restart.")
 class CosineWarmRestartsLR(_LRScheduler):
     """
         Args:
@@ -83,15 +82,15 @@ class CosineWarmRestartsLR(_LRScheduler):
     def __init__(self, optimizer, last_epoch = -1):
         super(CosineWarmRestartsLR, self).__init__(optimizer, last_epoch = last_epoch)
 
-        self.T0    = FLAGS.LRScheduler_WRN_T0
-        self.Tmult = FLAGS.LRScheduler_WRN_Tmult
+        self.T0    = Args.LRScheduler_WRN_T0
+        self.Tmult = Args.LRScheduler_WRN_Tmult
 
 
         # closed form of
         # self.factor = 0.5 * (1 + math.cos(d/Ti *math.pi))
         # where d ist distance to last restart, Ti is current period length
         # and restart epochs are given by E = T_0 * sum_x=0^N T_m^x ; x \in N
-        if FLAGS.LRScheduler_WRN_Tmult == 1:
+        if Args.LRScheduler_WRN_Tmult == 1:
             def __calcFactor(progress: float):
                 x = int(((self.last_epoch + progress) - self.T0 )/self.T0  + 1)
                 d = (self.last_epoch + progress) - x * self.T0 
@@ -131,7 +130,7 @@ schedulerDict = {
 
 def getLRScheduler(optimizer):
     schedulers = []
-    for scheduler in  FLAGS.lrScheduler:
+    for scheduler in Args.lrScheduler:
         if scheduler in schedulerDict:
             schedulers.append(schedulerDict[scheduler])
         else:
@@ -151,15 +150,15 @@ if __name__ == '__main__':
     import matplotlib.pylab as plt
     import numpy as np
     
-    flags.DEFINE_integer(name = "epochs"      , default = 160          , help = "Total number of epochs.")
-    FLAGS(sys.argv)
-    optimizer = torch.optim.SGD(torch.nn.Linear(5,5).parameters(), lr = FLAGS.learningRate)
+    Args.add_argument("--epochs", type=int, help="Total number of epochs.")
+    Args.parse_args()
+    optimizer = torch.optim.SGD(torch.nn.Linear(5,5).parameters(), lr = Args.learningRate)
     lrScheduler = getLRScheduler(optimizer)
 
     batches = 10
     lr = []
     epochs = []
-    for epoch in range(1, FLAGS.epochs + 1):
+    for epoch in range(1, Args.epochs + 1):
         for batch in range(batches):
             lr.append(optimizer.param_groups[0]["lr"])
             lrScheduler.step(epoch-1, (batch+1)/batches)

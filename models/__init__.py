@@ -21,11 +21,9 @@ modelDict = {
 }
 
 
+from utility.args import Args
 # Define flags here that are used by multiple models to avoid double definitions.
-from absl import flags
-FLAGS = flags.FLAGS
-flags.DEFINE_enum   (name = "model"        , default = "WRN"   , enum_values = modelDict.keys(), help="model name (WRN = WideResNet)")
-flags.DEFINE_float  (name = "dropout"      , default = 0.0          , help = "Dropout rate.")
-flags.DEFINE_bool   (name = "BN"           , default = False          , help = "use batch norm ?")
-flags.DEFINE_integer(name = "depth"       , default = 16           , help = "Number of layers.")
-
+Args.add_argument("--model", type=str, help="model name (WRN = WideResNet")
+Args.add_argument("--dropout", type=float, help="Dropout rate.")
+Args.add_argument("--BN", type=bool, help="use batch norm ?")
+Args.add_argument("--depth", type=int, help="Number of layers.")

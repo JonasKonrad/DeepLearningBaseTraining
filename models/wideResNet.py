@@ -2,22 +2,20 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from utility.args import Args
 
-from absl import flags
-FLAGS = flags.FLAGS
-flags.DEFINE_integer(name = "widthFactor" , default = 4           , help = "How many times wider compared to normal ResNet.")
-
+Args.add_argument("--widthFactor", type=int, help="How many times wider compared to normal ResNet.")
 
 
 class BasicBlock(nn.Module):
     def __init__(self, in_planes, out_planes, stride, dropRate=0.0):
         super(BasicBlock, self).__init__()
-        if FLAGS.BN:
+        if Args.BN:
             self.bn1 = nn.BatchNorm2d(in_planes)
         self.relu1 = nn.ReLU(inplace=True)
         self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
-        if FLAGS.BN:
+        if Args.BN:
             self.bn2 = nn.BatchNorm2d(out_planes)
         self.relu2 = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(out_planes, out_planes, kernel_size=3, stride=1,
@@ -28,13 +26,13 @@ class BasicBlock(nn.Module):
                                padding=0, bias=False) or None
     def forward(self, x):
         if not self.equalInOut:
-            if FLAGS.BN:
+            if Args.BN:
                 x = self.bn1(x)
             x = self.relu1(x)
         else:
-            if FLAGS.BN: out = self.relu1(self.bn1(x))
+            if Args.BN: out = self.relu1(self.bn1(x))
             else:        out = self.relu1(x)
-        if FLAGS.BN: out = self.relu2(self.bn2(self.conv1(out if self.equalInOut else x)))
+        if Args.BN: out = self.relu2(self.bn2(self.conv1(out if self.equalInOut else x)))
         else:        out = self.relu2(self.conv1(out if self.equalInOut else x))
         if self.droprate > 0:
             out = F.dropout(out, p=self.droprate, training=self.training)
@@ -57,9 +55,9 @@ class WideResNet(nn.Module):
     def __init__(self, num_classes):
         super(WideResNet, self).__init__()
 
-        dropRate = FLAGS.dropout
-        widen_factor = FLAGS.widthFactor
-        depth = FLAGS.depth
+        dropRate = Args.dropout
+        widen_factor = Args.widthFactor
+        depth = Args.depth
 
         nChannels = [16, 16*widen_factor, 32*widen_factor, 64*widen_factor]
         if (depth - 4) % 6 != 0:
@@ -76,7 +74,7 @@ class WideResNet(nn.Module):
         # 3rd block
         self.block3 = NetworkBlock(n, nChannels[2], nChannels[3], block, 2, dropRate)
         # global average pooling and classifier
-        if FLAGS.BN:
+        if Args.BN:
             self.bn1 = nn.BatchNorm2d(nChannels[3])
         self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(nChannels[3], num_classes)
@@ -101,7 +99,7 @@ class WideResNet(nn.Module):
         out = self.block1(out)
         out = self.block2(out)
         out = self.block3(out)
-        if FLAGS.BN:
+        if Args.BN:
             out = self.bn1(out)
         out = self.relu(out)
         out = F.avg_pool2d(out, 8, 1, 0)

@@ -6,7 +6,7 @@ from .augmentation import AutoAugment, cutout
 import numpy as np
 import random
 
-from absl import flags
+from utility.args import Args
 
 def worker_init_fn(id):
     """ manually seed each workers np random generator. see https://github.com/pytorch/pytorch/issues/5059"""
@@ -18,7 +18,7 @@ class ImageNet(torchvision.datasets.ImageFolder):
         if train:
             dir = os.path.join(root, 'train')
             transform.transforms = [
-                transforms.RandomResizedCrop(FLAGS.imageSize if FLAGS.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
+                transforms.RandomResizedCrop(Args.imageSize if Args.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
                 ] + transform.transforms
         else:
             dir = os.path.join(root, 'val')
@@ -26,8 +26,8 @@ class ImageNet(torchvision.datasets.ImageFolder):
                 transforms.Resize(256),
                 transforms.CenterCrop(224),
                 ] + transform.transforms
-            if FLAGS.imageSize is not None:
-                transform.transforms.insert(2, transforms.Resize(FLAGS.imageSize))
+            if Args.imageSize is not None:
+                transform.transforms.insert(2, transforms.Resize(Args.imageSize))
 
         super(ImageNet, self).__init__(dir, transform = transform)
 
@@ -44,26 +44,21 @@ dataSetStatistics = {
 }
 
 
-FLAGS = flags.FLAGS
-flags.DEFINE_integer(name = "dataThreads" , default = 6            , help = "Number of CPU threads for dataloaders.")
-flags.DEFINE_string (name = 'dataDir'     , default = "~/.datasets", help = "main directory to store datasets")
-flags.DEFINE_integer(name = 'batchSize'   , default = 256          , help = "batch size")
-flags.DEFINE_enum   (name = "dataset"     , default = "CIFAR100"   , enum_values = availableDatasets.keys(), help="Dataset")
 
-
-flags.DEFINE_integer(name = 'imageSize'   , default = None          , help = "resize images after augmentation")
-
-
-flags.DEFINE_bool   (name = "flip"       , default = False        , help = "flip horizontally")
-flags.DEFINE_bool   (name = "crop"       , default = False        , help = "crop 32x32 padding 4")
-flags.DEFINE_bool   (name = "cut"        , default = False        , help = "cutout")
-flags.DEFINE_float  (name = "cutoutProp" , default = 0.5          , help = "Probability for cutout augmenation.")
-flags.DEFINE_bool   (name = "autoAugment", default = False        , help = "autoAugment")
-
+Args.add_argument("--dataThreads", type=int, help="Number of CPU threads for dataloaders.")
+Args.add_argument("--dataDir", type=str, help="main directory to store datasets")
+Args.add_argument("--batchSize", type=int, help="batch size")
+Args.add_argument("--dataset", type=str, help="Dataset")
+Args.add_argument("--imageSize", type=int, help="resize images after augmentation. 0 for no resizing")
+Args.add_argument("--flip", type=bool, help="flip horizontally")
+Args.add_argument("--crop", type=bool, help="crop 32x32 padding 4")
+Args.add_argument("--cut", type=bool, help="cutout")
+Args.add_argument("--cutoutProp", type=float, help="Probability for cutout augmenation.")
+Args.add_argument("--autoAugment", type=bool, help="autoAugment")
 
 class DataLoader:
     def __init__(self, num_replicas = 1, rank = 1):
-        self.datasetName = FLAGS.dataset
+        self.datasetName = Args.dataset
         try:
             self.dataset, self.numClasses = availableDatasets[self.datasetName]
         except KeyError:
@@ -79,18 +74,18 @@ class DataLoader:
 
 
         transform_list = []
-        if FLAGS.autoAugment and self.datasetName in ["CIFAR10","CIFAR100"]:
+        if Args.autoAugment and self.datasetName in ["CIFAR10","CIFAR100"]:
             transform_list.append(AutoAugment())
-        if FLAGS.flip:
+        if Args.flip:
             transform_list.append(torchvision.transforms.RandomHorizontalFlip())
-        if FLAGS.cut:
+        if Args.cut:
             transform_list.append(Cutout())
-        if FLAGS.crop and self.datasetName in ["CIFAR10","CIFAR100"]:
+        if Args.crop and self.datasetName in ["CIFAR10","CIFAR100"]:
             transform_list.append(torchvision.transforms.RandomCrop(size=(32, 32), padding=4))
 
-        if FLAGS.imageSize is not None:
+        if Args.imageSize != 0:
             transform_list += [
-                transforms.Resize(FLAGS.imageSize, interpolation = torchvision.transforms.InterpolationMode.BICUBIC),
+                transforms.Resize(Args.imageSize, interpolation = torchvision.transforms.InterpolationMode.BICUBIC),
             ]
 
         transform_list += [
@@ -99,9 +94,9 @@ class DataLoader:
         ]
         train_transform = transforms.Compose(transform_list)
 
-        if FLAGS.imageSize is not None:
+        if Args.imageSize != 0:
             test_transform = [
-                transforms.Resize(FLAGS.imageSize, interpolation = torchvision.transforms.InterpolationMode.BICUBIC),
+                transforms.Resize(Args.imageSize, interpolation = torchvision.transforms.InterpolationMode.BICUBIC),
             ]
         else:
             test_transform = []
@@ -111,24 +106,24 @@ class DataLoader:
             transforms.Normalize(mean, std)
         ])
 
-        train_set = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=train_transform)
-        test_set  = self.dataset(root=FLAGS.dataDir, train=False, download=True, transform=test_transform)
+        train_set = self.dataset(root=Args.dataDir, train=True, download=True, transform=train_transform)
+        test_set  = self.dataset(root=Args.dataDir, train=False, download=True, transform=test_transform)
         
         # to get random order of train data the seed has to be set manually. the seed value must be constant among all processes. 
-        seed = torch.tensor(random.getrandbits(32)).cuda(FLAGS.local_rank % torch.cuda.device_count())
+        seed = torch.tensor(random.getrandbits(32)).cuda(Args.local_rank % torch.cuda.device_count())
         torch.distributed.broadcast(seed, src = 0)
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True , seed = seed.item())
         test_sampler  = torch.utils.data.distributed.DistributedSampler(test_set , shuffle=False)
         
-        self.train = torch.utils.data.DataLoader(train_set, batch_size=FLAGS.batchSize, num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn, sampler = train_sampler)
-        self.test  = torch.utils.data.DataLoader(test_set , batch_size=FLAGS.batchSize, num_workers=FLAGS.dataThreads, worker_init_fn=worker_init_fn, sampler = test_sampler)
+        self.train = torch.utils.data.DataLoader(train_set, batch_size=Args.batchSize, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = train_sampler)
+        self.test  = torch.utils.data.DataLoader(test_set , batch_size=Args.batchSize, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = test_sampler)
 
     def _get_statistics(self):
-        data = self.dataset(root=FLAGS.dataDir, train=True, download=True, transform=transforms.ToTensor())
+        data = self.dataset(root=Args.dataDir, train=True, download=True, transform=transforms.ToTensor())
         firstMoment = torch.zeros(3)
         secondMoment = torch.zeros(3)
         N = 0
-        for inputs, _ in torch.utils.data.DataLoader(data, batch_size=64, num_workers=FLAGS.dataThreads):
+        for inputs, _ in torch.utils.data.DataLoader(data, batch_size=64, num_workers=Args.dataThreads):
             N += inputs.shape[0]
             for i in range(3):
                 firstMoment[i] += inputs[:,i,:,:].mean()*inputs.shape[0]
@@ -142,7 +137,7 @@ class Cutout:
     def __init__(self, size=16):
         self.size = size
         self.half_size = size // 2
-        self.p = FLAGS.cutoutProp
+        self.p = Args.cutoutProp
 
     def __call__(self, image):
         return cutout(image)
