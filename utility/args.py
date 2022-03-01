@@ -9,13 +9,13 @@ class MetaClass(type):
 
 class Args(metaclass=MetaClass):
     """
-    Argument parsing used from defailt argpase module. Changes:
+    Argument parsing used from default argpase module. Changes:
         - defaults are not allowed in source code
         - a default value must be provided for each argument in the input file
-        - bool arges are handeled as follow:
-            -> --args --> True
-            -> --args True --> True
-            -> --args False --> False
+        - bool args are handeled as follows:
+            -> --arg --> True
+            -> --arg True --> True
+            -> --arg False --> False
             -> (not given) --> default from ini file
     """
     data: ar.Namespace = None
@@ -62,7 +62,7 @@ class Args(metaclass=MetaClass):
                 # next line is necessary to convert strings to bool as whished
                 if action.type is bool:
                     action.type = make_bool
-
+                #split lists seperated by whitespace in defaults file
                 if action.nargs == "*":
                     defaults[action.dest] = defaults[action.dest].split(" ") if defaults[action.dest] else []
 
@@ -83,6 +83,6 @@ def make_bool(arg: Any) -> bool:
         elif arg.lower() in ['false', '0', 'f', 'n', 'no']:
             return False
         else:
-            raise RuntimeError(f"Could not convert string to bool: {s}")
+            raise RuntimeError(f"Could not convert string to bool: {arg}")
     else:
         return bool(arg)
