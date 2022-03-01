@@ -25,6 +25,11 @@ run:
 @TODO:
     - add model summary
     - check correct rnd seeding; save rnd seed
+    - read defaults from input file
+    - get rid of flags (add own short argparse module)
+    - get rid of tensorboard log files (hdf5 files instead?)
+    - typing...
+    - reintroduce cpu support
 """
 
 FLAGS = flags.FLAGS
