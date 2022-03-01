@@ -27,13 +27,14 @@ run:
     - typing...
     - reintroduce cpu support
     - implement PEP 8
+    - update docstrings
 """
 
 
 Args.add_argument("--logDir", type=str, help="main directory to store logs")
 Args.add_argument("--logSubDir", type=str, help="subdir in logDir to store logs for this run")
 Args.add_argument("--epochs", type=int, help="Total number of epochs")
-Args.add_argument("--contin", type=bool, help="Whether to continue from checkpoint.")
+Args.add_argument("--contin", type=bool, help="Whether to continue from checkpoint. In continue mode parameters are read from params.json file, input file is ignored.")
 Args.add_argument("--freezeBN", type=bool, help="Whether to freezeBN.")
 
 Args.add_argument("--local_rank", type=int, help="local process rank. catched form 'SLURM_PROCID' if started with slurm")
@@ -68,8 +69,9 @@ def train() -> None:
         startEpoch = modelSaver.loadModel("checkpoint.model")
         startEpoch += 1
         model = model.cuda(localGPU)
+        log._print_header()
         if startEpoch >= Args.epochs:
-            raise RuntimeError(f"Can't cotinue model from epoch {startEpoch} to max epoch {Args.epochs}.")
+            raise RuntimeError(f"Can't continue model from epoch {startEpoch} to max epoch {Args.epochs}.")
     else:
         modelSaver(0, 0)
 
@@ -127,15 +129,11 @@ if __name__ == "__main__":
     logDir = os.path.join(Args.logDir, Args.logSubDir)
 
     if Args.contin:
-        #first overwrite defaults with old parameters ..
         with open(os.path.join(logDir, "params.json"), "r") as file:
-            ArgsDict = json.load(file)
-        Args._set_attributes(**ArgsDict)
-        #@TODO add validation of Args here
-        #... then set overwrite old parameters with new parameters
-        Args(sys.argv)
+            parameters = json.load(file)
+        Args.parse_args_contin(parameters)
 
-    initialize() #set up seed and cudnn
+    initialize() # set up seed and cudnn
 
     Args.local_rank = int(os.getenv("LOCAL_RANK", os.getenv("SLURM_PROCID", Args.local_rank)))
     Args.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", Args.nodes))

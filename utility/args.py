@@ -59,10 +59,10 @@ class Args(metaclass=MetaClass):
             if not isinstance(action, ar._HelpAction):
                 if action.dest not in defaults:
                     raise RuntimeError(f"No default argument given for {action.dest}.")
-                # next line is necessary to convert strings to bool as whished
+                # necessary to convert strings to bool
                 if action.type is bool:
                     action.type = make_bool
-                #split lists seperated by whitespace in defaults file
+                # split lists seperated by whitespace in defaults file
                 if action.nargs == "*":
                     defaults[action.dest] = defaults[action.dest].split(" ") if defaults[action.dest] else []
 
@@ -72,10 +72,14 @@ class Args(metaclass=MetaClass):
             raise RuntimeError(f"Parameter(s) {default_keys} were given in input file but not defined before.")
 
         cls.parser.set_defaults(**defaults)
-
-
         cls.data = cls.parser.parse_args(remaining_argv)
         
+    @classmethod
+    def parse_args_contin(cls, defaults: dict) -> None:
+        cls.parser.set_defaults(**defaults)
+        cls.data = cls.parser.parse_args()
+
+
 def make_bool(arg: Any) -> bool:
     if isinstance(arg, str):
         if arg.lower() in ['true', '1', 't', 'y', 'yes']:
