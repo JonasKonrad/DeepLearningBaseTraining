@@ -1,9 +1,6 @@
 #!/bin/python3
 import numpy as np
 import matplotlib.pylab as plt
-import os
-from tensorboard.backend.event_processing import event_accumulator as ea
-
 
 def StdMean(data,ddof=1,t_verteilung=True):
     """ gibt standardunsicherheit des mittelwertes einer liste unter beruecksichtigung der studentschen t verteilung aus, basiert auf np.std
@@ -80,27 +77,3 @@ def makeCustomLegend(axis, styleNameTuples, **kwargs):
     plt.sca(axis)
     legend = plt.legend(lines, list(zip(*styleNameTuples))[1], **kwargs)
     axis.add_artist(legend)
-
-
-
-def getTensorBoardFileName(path):
-    fileName = None
-    for file in os.listdir(path):
-        if file.startswith("events.out"):
-            if fileName is None:
-                fileName = os.path.join(path, file)
-            else:
-                raise ValueError("found more than one tensorboard log file")
-    return fileName
-
-def convertTensorBoardEvent_to_npArray(event):
-    return np.array([event[i][2] for i in range(len(event))])
-
-
-def readTensorBoardLog(path):
-    file  = getTensorBoardFileName(path)
-
-    acc = ea.EventAccumulator(file, size_guidance={'tensors': 0,})
-    acc.Reload()
-
-    return {tensorName : convertTensorBoardEvent_to_npArray(acc.Scalars(tensorName)) for tensorName in acc.scalars.Keys()}

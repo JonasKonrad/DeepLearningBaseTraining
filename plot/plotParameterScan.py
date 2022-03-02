@@ -2,51 +2,51 @@
 import numpy as np
 import matplotlib.pylab as plt
 import os
+import h5py
 
 
-from plotUtils import  makeCustomLegend, StdMean, color, readTensorBoardLog
+from plotUtils import  StdMean
 
 
 dataDir = "../../logs"
-endEpoch = 300
-repititions = 4
+endEpoch = 5
+repititions = 2
 paramList = ["1", "2", "3"]
 
 fig, ax = plt.subplots()
 
-bestAcc = {"acc" : 0}
 accuracy = {}
 for postfix in [""] + [f"_rep_{i}" for i in range(2,repititions+1)]:
     for i_param, param in enumerate(paramList):
         try:
-            folder = f"name_{param}{postfix}"
-            data = readTensorBoardLog(os.path.join(dataDir, folder))
-        except FileNotFoundError:
-            print(f"File: {folder} not found.")
+            folder = f"test_{param}{postfix}"
+            with h5py.File(os.path.join(dataDir, folder, "logs.hdf5"), "r") as f:
+                data = f["test"]["accuracy"][:]
+        except OSError:
+            print(f"No Logfile found in folder {folder}.")
             continue
-        
-        dat = data[f"accuracy/test"]
 
-        if dat.shape[0] == endEpoch:
-            maxAc = dat[-1]
+        if data.shape[0] == endEpoch:
+            lastAccur = data[-1]
             if param in accuracy.keys():
-                accuracy[param].append(maxAc)
+                accuracy[param].append(lastAccur)
             else:
-                accuracy[param] = [maxAc]
+                accuracy[param] = [lastAccur]
         else:
-            print(f"Runs {folder} not finished. Epoch: {dat.shape[0]}/{endEpoch}.")
+            print(f"Runs {folder} not finished. Epoch: {data.shape[0]}/{endEpoch}.")
 
 paramList_cleared = []
 meanAcc = []
 stdAcc = []
+bestAcc = {"accur" : 0}
 for param in paramList:
     if param in accuracy.keys():
         paramList_cleared.append(param)
         meanAcc.append(np.mean(accuracy[param]))
         stdAcc.append(StdMean(accuracy[param]))
 
-        if meanAcc[-1] > bestAcc["acc"] and np.isfinite(stdAcc[-1]):
-            bestAcc={"acc": meanAcc[-1], "std": stdAcc[-1], "param": param}
+        if meanAcc[-1] > bestAcc["accur"]:
+            bestAcc={"accur": meanAcc[-1], "std": stdAcc[-1], "param": param}
 
 meanAcc = np.array(meanAcc)
 stdAcc = np.array(stdAcc)
@@ -62,8 +62,8 @@ blAcc = 0.8167500027588436
 blStd = 0.00033224558418281904
 
 print(f"Baseline: {blAcc} +- {blStd}")
-print(f"Best    : {bestAcc['acc']} +- {bestAcc['std']}")
-print(f"param: {bestAcc['param']}, gain: {bestAcc['acc']-blAcc} +- {np.sqrt((bestAcc['std'])**2 + (blStd)**2)}" )
+print(f"Best    : {bestAcc['accur']} +- {bestAcc['std']}")
+print(f"param: {bestAcc['param']}, gain: {bestAcc['accur']-blAcc} +- {np.sqrt((bestAcc['std'])**2 + (blStd)**2)}" )
 
 ax.axhline(blAcc, color = "k")
 ax.axhspan(blAcc-blStd, blAcc+blStd, alpha=0.4, color='grey', ec = None)

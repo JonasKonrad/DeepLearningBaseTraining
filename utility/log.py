@@ -1,9 +1,21 @@
-from torch.utils.tensorboard import SummaryWriter
+import h5py
 import time
 import torch
+import os
 
 from utility.args import Args
 
+
+"""
+@TODO:
+    - make learning rate no special variable (just normal metric) anymore
+    - add option to metric at each batch
+    - implement buffer/flush
+    - slim down this code...
+"""
+
+
+Args.add_argument("--truncate", type=bool, help="truncate log file")
 Args.add_argument("--verbose", type=bool, help="print to terminal")
 Args.add_argument("--logEach", type=int, help="Iterations to log during training.")
 
@@ -21,8 +33,18 @@ class Log:
         self.steps = 0
         self.state = {}
 
-        self.writer = SummaryWriter(logDir) if torch.distributed.get_rank() == 0 else None
-    
+        self.filePath = os.path.join(Args.logDir, Args.logSubDir, "logs.hdf5")
+        if torch.distributed.get_rank() == 0:
+            if not Args.contin:
+                with h5py.File(self.filePath, "w" if Args.truncate else "w-") as f:
+                    f.create_group("train")
+                    f.create_group("test")
+                    f["train"].create_dataset("LR", shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
+
+            else:
+                if not os.path.isfile(self.filePath):
+                    raise RuntimeError(f"Running in continue mode but log file not found. Path: {self.filePath}")
+        
         self.config = {}
         self.defaultConfig = {
             "logTrain"  : True,
@@ -59,6 +81,7 @@ class Log:
         self.loading_bar = LoadingBar(length=(self.columnLen+1)*len(self.showMetricsTest)-3)
 
     def train(self, epoch, len_dataset: int) -> None:
+        """ reset to be ready for eval data """
         if torch.distributed.get_rank() == 0:
             self.epoch = epoch
             if self.epoch == 1:
@@ -68,27 +91,34 @@ class Log:
             self._reset(len_dataset)
 
     def eval(self, len_dataset: int) -> None:
+        """ write train data and reset to be ready for eval data """
         if torch.distributed.get_rank() == 0:
             self.flush()
             self.is_train = False
 
-            for name, val in self.state.items():
-                if self.config[name]["logTrain"]:
-                    self.writer.add_scalar(f'{name}/train', val / self.steps, self.epoch)
-            self.writer.add_scalar('LR',self.learning_rate, self.epoch)
-            self.writer.flush()
+            with h5py.File(self.filePath, "r+") as f:
+                fileGroup = f["train"]
+                for name, val in self.state.items():
+                    fileGroup[name].resize(fileGroup[name].shape[-1] + 1, axis = 0)
+                    fileGroup[name][..., -1] = val / self.steps
+
+                fileGroup["LR"].resize(fileGroup["LR"].shape[-1] + 1, axis = 0)
+                fileGroup["LR"][..., -1] = self.learning_rate
 
             self._reset(len_dataset)
 
     def evalEnd(self) -> None:
+        """ write eval data """
         if torch.distributed.get_rank() == 0:
             #print new line
             self.flush()
             print()
-            for name, val in self.state.items():
-                if self.config[name]["logTest"]:
-                    self.writer.add_scalar(f'{name}/test', val / self.steps, self.epoch)
-            self.writer.flush()
+
+            with h5py.File(self.filePath, "r+") as f:
+                fileGroup = f["test"]
+                for name, val in self.state.items():
+                    fileGroup[name].resize(fileGroup[name].shape[-1] + 1, axis = 0)
+                    fileGroup[name][..., -1] = val / self.steps
 
     def __call__(self, logs, learning_rate: float = None) -> None:
         self.learning_rate = learning_rate
@@ -114,6 +144,7 @@ class Log:
         return self.state[name] / self.steps if self.steps != 0 else None
 
     def flush(self) -> None:
+        """ print to terminal """
         if self.is_train:
             self.trainString = f"{f'{self.learning_rate:.3e}'.center(self.columnLen-1)}┃{'│'.join([self.config[name]['fmt'](self.state[name] / self.steps).center(self.columnLen) for name in self.showMetricsTrain])}"
             
@@ -141,14 +172,21 @@ class Log:
         return f"{time_seconds // 60:02d}:{time_seconds % 60:02d} min"
 
     def _addMetric(self, config):
+        name = config["name"]
         internConfig = {}
         for key, val in self.defaultConfig.items():
             if key in config:
                 internConfig[key] = config[key]
             else:
                 internConfig[key] = val
-        self.config[config["name"]] = internConfig
-        self.state[config["name"]] = 0
+        self.config[name] = internConfig
+        self.state[name] = 0
+
+        with h5py.File(self.filePath, "r+") as f:
+            if internConfig["logTrain"]:
+                f["train"].create_dataset(name, shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
+            if internConfig["logTest"]:
+                f["test"].create_dataset(name, shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
 
     def _print_header(self) -> None:
         print(f"┏━━━━━━━━━━━━━━┳━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳{'T╺╸R╺╸A╺╸I╺╸N '.center((self.columnLen+1)*len(self.showMetricsTrain)-1,'━')}┳{'V╺╸A╺╸L╺╸I╺╸D '.center((self.columnLen+1)*len(self.showMetricsTest)-1,'━')}┓")

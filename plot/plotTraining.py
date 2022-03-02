@@ -2,9 +2,9 @@
 import numpy as np
 import matplotlib.pylab as plt
 import os
+import h5py
 
-
-from plotUtils import  makeCustomLegend, StdMean, color, readTensorBoardLog
+from plotUtils import  makeCustomLegend, color
 
 
 dataDir = "../../logs"
@@ -14,11 +14,10 @@ ax2=ax.twinx()
 ax.set_zorder(-1)  # default zorder is 0 for ax1 and ax2
 ax.patch.set_visible(False)  # prevents ax1 from hiding ax2
 
-data = readTensorBoardLog(os.path.join(dataDir, "test"))
-
-ax.plot(np.arange(len(data["loss/test"]))    ,data["loss/test"], "-",  color = color(0,1), label = f"$\lambda = data $")
-ax.plot(np.arange(len(data["loss/train"]))    ,data["loss/train"], "--",  color = color(0,1))
-ax2.plot(np.arange(len(data["accuracy/test"]))    ,data["accuracy/test"], ":",  color = color(0,1))
+with h5py.File(os.path.join(dataDir, "test", "logs.hdf5"), "r") as f:
+    ax.plot(np.arange(len(f["test"]["loss"][:])), f["test"]["loss"][:], "-",  color = color(0,1), label = f"$\lambda = data $")
+    ax.plot(np.arange(len(f["train"]["loss"][:])), f["train"]["loss"][:], "--",  color = color(0,1))
+    ax2.plot(np.arange(len(f["test"]["accuracy"][:])), f["test"]["accuracy"][:], ":",  color = color(0,1))
 
 
 ax.set_xscale('log')

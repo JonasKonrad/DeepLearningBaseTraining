@@ -22,8 +22,7 @@ run:
 """
 @TODO:
     - add model summary
-    - check correct rnd seeding; save rnd seed
-    - get rid of tensorboard log files (hdf5 files instead?)
+    - save rnd seed
     - typing...
     - reintroduce cpu support
     - implement PEP 8
@@ -43,7 +42,7 @@ Args.add_argument("--world_size", type=int, help="")
 
 
 def train() -> None:
-
+    logDir = os.path.join(Args.logDir, Args.logSubDir)
     torch.distributed.init_process_group(backend="nccl", init_method="env://", world_size=Args.world_size, rank=Args.local_rank)
     localGPU = Args.local_rank % torch.cuda.device_count()
     torch.cuda.set_device(localGPU)
