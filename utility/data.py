@@ -57,7 +57,7 @@ Args.add_argument("--cutoutProp", type=float, help="Probability for cutout augme
 Args.add_argument("--autoAugment", type=bool, help="autoAugment")
 
 class DataLoader:
-    def __init__(self, num_replicas = 1, rank = 1):
+    def __init__(self):
         self.datasetName = Args.dataset
         try:
             self.dataset, self.numClasses = availableDatasets[self.datasetName]

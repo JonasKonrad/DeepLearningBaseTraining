@@ -36,7 +36,7 @@ export WORLD_SIZE=$((SLURM_JOB_NUM_NODES*GPUS_PER_NODE))
 # --> env <--
 # START THE APPLICATION
 module purge
-module load palma/2020b Miniconda3/4.9.2
+module load palma/2021a Miniconda3/4.9.2
 
 CONDA_BASE=$(conda info --base)
 source $CONDA_BASE/etc/profile.d/conda.sh

@@ -3,7 +3,7 @@ import sys
 import torch
 import json
 
-from models import modelDict
+from models import getModel
 from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.log import Log
@@ -21,6 +21,7 @@ run:
 
 """
 @TODO:
+    - ZeroRedundancyOptimizer?
     - add model summary
     - save rnd seed
     - typing...
@@ -49,9 +50,9 @@ def train() -> None:
 
     log = Log(logDir = logDir)
 
-    dataset = DataLoader(num_replicas = 1, rank = 1)
+    dataset = DataLoader()
 
-    model: torch.nn.Module = modelDict[Args.model](num_classes=dataset.numClasses)
+    model = getModel(num_classes=dataset.numClasses)
     model = model.cuda(localGPU)
     if not Args.freezeBN:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -132,11 +133,11 @@ if __name__ == "__main__":
             parameters = json.load(file)
         Args.parse_args_contin(parameters)
 
-    initialize() # set up seed and cudnn
-
     Args.local_rank = int(os.getenv("LOCAL_RANK", os.getenv("SLURM_PROCID", Args.local_rank)))
     Args.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", Args.nodes))
     Args.world_size = torch.cuda.device_count() * Args.nodes
+
+    initialize() # set up seed and cudnn
 
     if Args.local_rank == 0:
         os.makedirs(logDir, exist_ok=True)
