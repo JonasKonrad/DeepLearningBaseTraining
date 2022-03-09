@@ -182,12 +182,13 @@ class Log:
         self.config[name] = internConfig
         self.state[name] = 0
 
-        if not Args.contin:
-            with h5py.File(self.filePath, "r+") as f:
-                if internConfig["logTrain"]:
-                    f["train"].create_dataset(name, shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
-                if internConfig["logTest"]:
-                    f["test"].create_dataset(name, shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
+        if torch.distributed.get_rank() == 0:
+            if not Args.contin:
+                with h5py.File(self.filePath, "r+") as f:
+                    if internConfig["logTrain"]:
+                        f["train"].create_dataset(name, shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
+                    if internConfig["logTest"]:
+                        f["test"].create_dataset(name, shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
 
     def _print_header(self) -> None:
         print(f"┏━━━━━━━━━━━━━━┳━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳{'T╺╸R╺╸A╺╸I╺╸N '.center((self.columnLen+1)*len(self.showMetricsTrain)-1,'━')}┳{'V╺╸A╺╸L╺╸I╺╸D '.center((self.columnLen+1)*len(self.showMetricsTest)-1,'━')}┓")
