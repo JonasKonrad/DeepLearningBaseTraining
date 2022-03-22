@@ -37,3 +37,25 @@ class SGD(torch.optim.SGD):
 
                 super(SGD, self).step()
                 self.zero_grad()
+
+
+    def load_state_dict(self, state_dict) -> None:
+        super(SGD, self).load_state_dict(state_dict)
+        
+        #set parameters to Args parameters, otherwise paremeters from state dictionary will stay in use
+        self.defaults["lr"] = Args.learningRate
+        self.defaults["momentum"] = Args.momentum
+        self.defaults["weight_decay"] = Args.weightDecay
+        self.defaults["nesterov"] = Args.nesterov
+
+        for group in self.param_groups:
+            for name, item in self.defaults.items():
+                group[name] = item
+
+
+    def reset_momentum_buffer(self) -> None:
+        for group in self.param_groups:
+            for p in group['params']:
+                state = self.state[p]
+                if 'momentum_buffer' in state:
+                    del state["momentum_buffer"]
