@@ -70,6 +70,16 @@ class CosineLR(_LRScheduler):
     def _calcFactor(self, progress):
         self.factor = 0.5 * (1 + math.cos((self.last_epoch + progress) / self.epochsPerPeriod * 2*math.pi))
 
+Args.add_argument("--LRScheduler_StartRamp_epochs", type=float, help="length of start ramp")
+class StartRamp(_LRScheduler):
+    def __init__(self, optimizer, last_epoch = -1):
+        super(StartRamp, self).__init__(optimizer, last_epoch = last_epoch)
+        
+        self.length = Args.LRScheduler_StartRamp_epochs
+
+    def _calcFactor(self, progress):
+        self.factor = min(1, (self.last_epoch + progress)/self.length)
+
 
 Args.add_argument("--LRScheduler_WRN_T0", type=float, help="Number of epochs for the first restart.")
 Args.add_argument("--LRScheduler_WRN_Tmult", type=float, help="Factor by which the period length is increased after each restart.")
@@ -125,6 +135,7 @@ schedulerDict = {
     "exp"  : ExponentialLR,
     "cos"  : CosineLR,
     "CWR"  : CosineWarmRestartsLR,
+    "startRamp"  : StartRamp,
 }
 
 
@@ -145,10 +156,8 @@ def getLRScheduler(optimizer):
 
 
 if __name__ == '__main__':
-    import sys
     import torch
     import matplotlib.pylab as plt
-    import numpy as np
     
     Args.add_argument("--epochs", type=int, help="Total number of epochs.")
     Args.parse_args()
