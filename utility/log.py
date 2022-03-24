@@ -84,8 +84,6 @@ class Log:
         """ reset to be ready for eval data """
         if torch.distributed.get_rank() == 0:
             self.epoch = epoch
-            if self.epoch == 1:
-                self._print_header()
 
             self.is_train = True
             self._reset(len_dataset)
@@ -190,11 +188,12 @@ class Log:
                     if internConfig["logTest"]:
                         f["test"].create_dataset(name, shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
 
-    def _print_header(self) -> None:
-        print(f"┏━━━━━━━━━━━━━━┳━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳{'T╺╸R╺╸A╺╸I╺╸N '.center((self.columnLen+1)*len(self.showMetricsTrain)-1,'━')}┳{'V╺╸A╺╸L╺╸I╺╸D '.center((self.columnLen+1)*len(self.showMetricsTest)-1,'━')}┓")
-        print(f"┃              ┃                             ┃{' '*((self.columnLen+1)*len(self.showMetricsTrain)-1)}┃{' '*((self.columnLen+1)*len(self.showMetricsTest)-1)}┃")
-        print(f"┃    epoch     ┃      time    │     l.r.     ┃{'│'.join([name[:self.columnLen].center(self.columnLen) for name in self.showMetricsTrain])}┃{'│'.join([name[:self.columnLen].center(self.columnLen) for name in self.showMetricsTest])}┃")
-        print(f"┠──────────────╂──────────────┼──────────────╂{'┼'.join(['─'*self.columnLen]*len(self.showMetricsTrain))}╂{'┼'.join(['─'*self.columnLen]*len(self.showMetricsTest))}┨")
+    def print_header(self) -> None:
+        if torch.distributed.get_rank() == 0:
+            print(f"┏━━━━━━━━━━━━━━┳━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳{'T╺╸R╺╸A╺╸I╺╸N '.center((self.columnLen+1)*len(self.showMetricsTrain)-1,'━')}┳{'T╺╸E╺╸S╺╸T '.center((self.columnLen+1)*len(self.showMetricsTest)-1,'━')}┓")
+            print(f"┃              ┃                             ┃{' '*((self.columnLen+1)*len(self.showMetricsTrain)-1)}┃{' '*((self.columnLen+1)*len(self.showMetricsTest)-1)}┃")
+            print(f"┃    epoch     ┃      time    │     l.r.     ┃{'│'.join([name[:self.columnLen].center(self.columnLen) for name in self.showMetricsTrain])}┃{'│'.join([name[:self.columnLen].center(self.columnLen) for name in self.showMetricsTest])}┃")
+            print(f"┠──────────────╂──────────────┼──────────────╂{'┼'.join(['─'*self.columnLen]*len(self.showMetricsTrain))}╂{'┼'.join(['─'*self.columnLen]*len(self.showMetricsTest))}┨")
 
 class LoadingBar:
     def __init__(self, length: int = 40):

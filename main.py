@@ -75,6 +75,7 @@ def train() -> None:
     else:
         modelSaver(0, 0)
 
+    log.print_header()
     for epoch in range(startEpoch, Args.epochs+1):
         dataset.train.sampler.set_epoch(epoch)
 
