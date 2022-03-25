@@ -34,11 +34,11 @@ class ModelSaver():
 
                 if epoch in map(int, Args.checkpointsList):
                     torch.save(state, os.path.join(self.dir, f"epoch_{epoch}.model"))
+                if Args.saveCheckpointInterval > 0 and epoch % Args.saveCheckpointInterval == 0:
+                    torch.save(state, os.path.join(self.dir, f"epoch_{epoch}.model"))
                 if Args.saveCheckpoint:
                     if epoch == Args.epochs - 1 and not Args.keepLastCheckpoint:
                         os.remove(os.path.join(self.dir, f"checkpoint.model"))
-                    elif Args.saveCheckpointInterval > 0 and epoch % Args.saveCheckpointInterval == 0:
-                        torch.save(state, os.path.join(self.dir, f"checkpoint_{epoch}.model"))
                     else:
                         torch.save(state, os.path.join(self.dir, f"checkpoint.model"))
                 if Args.saveBestModel and self.bestTestAccur < testAccur:
