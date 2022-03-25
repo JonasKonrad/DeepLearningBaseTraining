@@ -24,6 +24,7 @@ class ModelSaver():
         if torch.distributed.get_rank() == 0:
             if epoch in map(int, Args.checkpointsList) or \
                 Args.saveCheckpoint or \
+                Args.saveCheckpointInterval > 0 or \
                 (Args.saveBestModel and self.bestTestAccur < testAccur):
                 
                 state = {'epoch': epoch,
