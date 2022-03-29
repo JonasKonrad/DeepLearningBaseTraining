@@ -1,8 +1,7 @@
 from torchvision import models
 from typing import Union, List, Dict, Any, cast
 
-from absl import flags
-FLAGS = flags.FLAGS
+from utility.args import Args
 
 cfgs: Dict[str, List[Union[str, int]]] = {
     11: [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
@@ -14,9 +13,9 @@ cfgs: Dict[str, List[Union[str, int]]] = {
 
 class VGG(models.VGG):
     def __init__(self, **kwargs):
-        if FLAGS.depth in cfgs:
-            cfg = cfgs[FLAGS.depth]
+        if Args.depth in cfgs:
+            cfg = cfgs[Args.depth]
         else:
-            raise RuntimeError(f"Depth {FLAGS.depth} is not supported for VGG. Select one of {', '.join(map(str,cfgs.keys()))}.")
+            raise RuntimeError(f"Depth {Args.depth} is not supported for VGG. Select one of {', '.join(map(str,cfgs.keys()))}.")
 
-        super(VGG, self).__init__(models.vgg.make_layers(cfg, batch_norm=FLAGS.BN), **kwargs)
+        super(VGG, self).__init__(models.vgg.make_layers(cfg, batch_norm=Args.BN), **kwargs)

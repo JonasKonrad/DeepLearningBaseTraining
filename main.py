@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     Args.local_rank = int(os.getenv("LOCAL_RANK", os.getenv("SLURM_PROCID", Args.local_rank)))
     Args.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", Args.nodes))
-    Args.world_size = torch.cuda.device_count() * Args.nodes
+    # Args.world_size = torch.cuda.device_count() * Args.nodes
 
     initialize() # set up seed and cudnn
 
