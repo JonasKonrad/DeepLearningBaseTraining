@@ -97,10 +97,10 @@ class Log:
             with h5py.File(self.filePath, "r+") as f:
                 fileGroup = f["train"]
                 for name, val in self.state.items():
-                    fileGroup[name].resize(fileGroup[name].shape[-1] + 1, axis = 0)
+                    fileGroup[name].resize(self.epoch, axis = 0)
                     fileGroup[name][..., -1] = val / self.steps
 
-                fileGroup["LR"].resize(fileGroup["LR"].shape[-1] + 1, axis = 0)
+                fileGroup["LR"].resize(self.epoch, axis = 0)
                 fileGroup["LR"][..., -1] = self.learning_rate
 
             self._reset(len_dataset)
@@ -115,7 +115,7 @@ class Log:
             with h5py.File(self.filePath, "r+") as f:
                 fileGroup = f["test"]
                 for name, val in self.state.items():
-                    fileGroup[name].resize(fileGroup[name].shape[-1] + 1, axis = 0)
+                    fileGroup[name].resize(self.epoch, axis = 0)
                     fileGroup[name][..., -1] = val / self.steps
 
     def __call__(self, logs, learning_rate: float = None) -> None:
