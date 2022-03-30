@@ -1,12 +1,24 @@
 import random
 import numpy as np
-import scipy
 from scipy import ndimage
 from PIL import Image, ImageEnhance, ImageOps
-
+import warnings
 
 class AutoAugment(object):
-    def __init__(self, policies = "sam"):
+    def __init__(self, policies = None, datasetName = None):
+        if policies is not None:
+            if datasetName is not None:
+                warnings.warn(f"'datasetName' and 'policies' argument were passed to AutoAugment init. 'datasetName will be ignored'")
+        else:
+            if datasetName is None:
+                policies = "sam"
+            elif datasetName in ["CIFAR10","CIFAR100"]:
+                policies = "sam"
+            elif datasetName in ["ImageNet"]:
+                policies = "original"
+            else:
+                raise RuntimeError(f"No default AutoAugment policy given for datasetName '{datasetName}'.")
+                
         if policies == "original":
             # original paper policies
             self.policies = [
