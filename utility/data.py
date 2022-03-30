@@ -74,8 +74,11 @@ class DataLoader:
 
 
         transform_list = []
-        if Args.autoAugment and self.datasetName in ["CIFAR10","CIFAR100"]:
-            transform_list.append(AutoAugment())
+        if Args.autoAugment:
+            if self.datasetName in ["CIFAR10","CIFAR100"]:
+                transform_list.append(AutoAugment(policies = "sam"))
+            else:
+                transform_list.append(AutoAugment(policies = "original"))
         if Args.flip:
             transform_list.append(torchvision.transforms.RandomHorizontalFlip())
         if Args.cut:
