@@ -4,6 +4,9 @@ from scipy import ndimage
 from PIL import Image, ImageEnhance, ImageOps
 import warnings
 
+from utility.args import Args
+
+
 class AutoAugment(object):
     def __init__(self, policies = None, datasetName = None):
         if policies is not None:
@@ -384,3 +387,15 @@ def cutout(org_img, magnitude=None):
     img = Image.fromarray(img)
 
     return img
+
+
+class Cutout:
+    def __init__(self):
+        assert Args.cutoutProp <= 1 and Args.cutoutProp >= 0
+
+        self.p = Args.cutoutProp
+
+    def __call__(self, image):
+        if np.random.random() > self.p:
+            return image
+        return cutout(image)

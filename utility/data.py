@@ -2,7 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import os
-from .augmentation import AutoAugment, cutout
+from .augmentation import AutoAugment, Cutout
 import numpy as np
 import random
 
@@ -131,13 +131,3 @@ class DataLoader:
         firstMoment .div_(N)
         secondMoment.div_(N)
         return firstMoment, torch.sqrt(secondMoment-firstMoment**2)
-
-
-class Cutout:
-    def __init__(self, size=16):
-        self.size = size
-        self.half_size = size // 2
-        self.p = Args.cutoutProp
-
-    def __call__(self, image):
-        return cutout(image)
