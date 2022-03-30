@@ -36,11 +36,13 @@ class Log:
         self.filePath = os.path.join(Args.logDir, Args.logSubDir, "logs.hdf5")
         if torch.distributed.get_rank() == 0:
             if not Args.contin:
-                with h5py.File(self.filePath, "w" if Args.truncate else "w-") as f:
-                    f.create_group("train")
-                    f.create_group("test")
-                    f["train"].create_dataset("LR", shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
-
+                try:
+                    with h5py.File(self.filePath, "w" if Args.truncate else "w-") as f:
+                        f.create_group("train")
+                        f.create_group("test")
+                        f["train"].create_dataset("LR", shape=(0,), dtype=float, maxshape=(Args.epochs,), chunks=True)
+                except FileExistsError as e:
+                    raise FileExistsError("To overwrite existing logfile use '--truncate' option. ") from e
             else:
                 if not os.path.isfile(self.filePath):
                     raise RuntimeError(f"Running in continue mode but log file not found. Path: {self.filePath}")
