@@ -360,42 +360,40 @@ def sharpness(img, magnitude):
     return img
 
 
-def cutout(org_img, magnitude=None):
-    # img = np.array(img)
-
-    magnitudes = np.linspace(0, 60/331, 11)
+def cutout(org_img, magnitude=None, mask_val=None):
 
     img = np.copy(org_img)
-    mask_val = img.mean()
+    if mask_val is None:
+        mask_val = [img.mean() / 255] * img.shape[2]
+
 
     if magnitude is None:
         mask_size = 16
     else:
+        magnitudes = np.linspace(0, 60/331, 11)
         mask_size = int(round(img.shape[0]*random.uniform(magnitudes[magnitude], magnitudes[magnitude+1])))
-    top = np.random.randint(0 - mask_size//2, img.shape[0] - mask_size)
-    left = np.random.randint(0 - mask_size//2, img.shape[1] - mask_size)
-    bottom = top + mask_size
-    right = left + mask_size
+    top = np.random.randint(0 - mask_size//2, img.shape[0] - mask_size//2)
+    left = np.random.randint(0 - mask_size//2, img.shape[1] - mask_size//2)
+    bottom = min(img.shape[0], top + mask_size)
+    right = min(img.shape[1], left + mask_size)
 
-    if top < 0:
-        top = 0
-    if left < 0:
-        left = 0
-
-    img[top:bottom, left:right, :].fill(mask_val)
+    for i in range(img.shape[2]):
+        img[max(0, top):bottom, max(0, left):right, i].fill(mask_val[i] * 255)
 
     img = Image.fromarray(img)
 
     return img
 
 
+    
 class Cutout:
-    def __init__(self):
+    def __init__(self, mask_val):
         assert Args.cutoutProp <= 1 and Args.cutoutProp >= 0
 
         self.p = Args.cutoutProp
+        self.mask_val = mask_val
 
     def __call__(self, image):
         if np.random.random() > self.p:
             return image
-        return cutout(image)
+        return cutout(image, mask_val = self.mask_val)

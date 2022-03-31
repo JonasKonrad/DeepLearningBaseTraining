@@ -79,7 +79,7 @@ class DataLoader:
         if Args.flip:
             transform_list.append(torchvision.transforms.RandomHorizontalFlip())
         if Args.cut:
-            transform_list.append(Cutout())
+            transform_list.append(Cutout(mask_val=mean))
         if Args.crop and self.datasetName in ["CIFAR10","CIFAR100"]:
             transform_list.append(torchvision.transforms.RandomCrop(size=(32, 32), padding=4))
 
