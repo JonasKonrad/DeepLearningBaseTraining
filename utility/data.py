@@ -2,7 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import os
-from .augmentation import AutoAugment, Cutout
+from .augmentation import AutoAugment, Cutout, CenterCrop
 import numpy as np
 import random
 
@@ -13,8 +13,19 @@ def worker_init_fn(id):
     uint64_seed = torch.initial_seed()
     np.random.seed([uint64_seed >> 32, uint64_seed & 0xffff_ffff])
 
+
+class CenterCrop(torch.nn.Module):
+    def __init__(self, crop_fraction = 0.875):
+        super().__init__()
+        self.crop_fraction = crop_fraction
+
+    def forward(self, img):
+        size = int(min(img.size) * self.crop_fraction)
+        return torchvision.transforms.functional.center_crop(img, size)
+
 class ImageNet(torchvision.datasets.ImageFolder):
     def __init__(self, root, train = True, download = None, transform = []):
+        self.train = train
         if train:
             dir = os.path.join(root, 'train')
             transform.transforms = [
@@ -23,11 +34,8 @@ class ImageNet(torchvision.datasets.ImageFolder):
         else:
             dir = os.path.join(root, 'val')
             transform.transforms = [
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
+                CenterCrop(),
                 ] + transform.transforms
-            if Args.imageSize is not None:
-                transform.transforms.insert(2, transforms.Resize(Args.imageSize))
 
         super(ImageNet, self).__init__(dir, transform = transform)
 
