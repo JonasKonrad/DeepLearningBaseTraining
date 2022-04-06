@@ -2,7 +2,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import os
-from .augmentation import AutoAugment, Cutout, CenterCrop
+from .augmentation import AutoAugment, Cutout
 import numpy as np
 import random
 
