@@ -1,5 +1,6 @@
 import random
 import torch
+import os
 
 from utility.args import Args
 
@@ -21,6 +22,7 @@ def initialize():
     torch.backends.cudnn.enabled = True
 
     if Args.deterministic:
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8" # see https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
         torch.backends.cudnn.benchmark = False
         torch.use_deterministic_algorithms(True)
     else:
