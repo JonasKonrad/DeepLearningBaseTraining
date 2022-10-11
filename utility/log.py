@@ -83,7 +83,7 @@ class Log:
         self.loading_bar = LoadingBar(length=(self.columnLen+1)*len(self.showMetricsTest)-3)
 
     def train(self, epoch, len_dataset: int) -> None:
-        """ reset to be ready for eval data """
+        """ reset to be ready for train data """
         if torch.distributed.get_rank() == 0:
             self.epoch = epoch
 
@@ -99,8 +99,9 @@ class Log:
             with h5py.File(self.filePath, "r+") as f:
                 fileGroup = f["train"]
                 for name, val in self.state.items():
-                    fileGroup[name].resize(self.epoch, axis = 0)
-                    fileGroup[name][..., -1] = val / self.steps
+                    if self.config[name]["logTrain"]:
+                        fileGroup[name].resize(self.epoch, axis = 0)
+                        fileGroup[name][..., -1] = val / self.steps
 
                 fileGroup["LR"].resize(self.epoch, axis = 0)
                 fileGroup["LR"][..., -1] = self.learning_rate
@@ -117,8 +118,9 @@ class Log:
             with h5py.File(self.filePath, "r+") as f:
                 fileGroup = f["test"]
                 for name, val in self.state.items():
-                    fileGroup[name].resize(self.epoch, axis = 0)
-                    fileGroup[name][..., -1] = val / self.steps
+                    if self.config[name]["logTest"]:
+                        fileGroup[name].resize(self.epoch, axis = 0)
+                        fileGroup[name][..., -1] = val / self.steps
 
     def __call__(self, logs, learning_rate: float = None) -> None:
         self.learning_rate = learning_rate
