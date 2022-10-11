@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=VGG_size___RUN__         # the name of your job
+#SBATCH --job-name=name         # the name of your job
 #SBATCH --export=NONE               # Start with a clean environment
 #SBATCH --nodes=1                   # the number of nodes you want to reserve
 #SBATCH --gres=gpu:4 
@@ -31,5 +31,5 @@ source $CONDA_BASE/etc/profile.d/conda.sh
 conda deactivate
 conda activate /home/m/m_beck52/envs/pytorch
 
-srun --export=ALL __EXECUTE__
+srun --export=ALL python3 main.py --rndSeed --logSubDir name_lr_${2}_rep_${1} --learningRate $2
 
