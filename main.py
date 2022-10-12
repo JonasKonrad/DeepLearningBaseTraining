@@ -9,7 +9,7 @@ from utility.data import DataLoader
 from utility.log import Log
 from utility.utils import initialize
 from utility.LRScheduler import getLRScheduler, _LRScheduler
-from utility.optimizer import SGD
+from utility.optimizer import Optimizer
 from utility.modelSaver import ModelSaver
 from utility.args import Args
 
@@ -57,7 +57,7 @@ def train() -> None:
     model = torch.nn.parallel.DistributedDataParallel(model)
 
 
-    optimizer = SGD(model.parameters())
+    optimizer = Optimizer(model.parameters())
     # optimizer: torch.optim.Optimizer = optimizerDict[Args.model](num_classes=dataset.numClasses)
     lrScheduler: _LRScheduler = getLRScheduler(optimizer)
     modelSaver = ModelSaver(model = model, optimizer = optimizer)

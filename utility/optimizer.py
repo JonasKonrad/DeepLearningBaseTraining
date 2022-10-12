@@ -8,14 +8,38 @@ Args.add_argument("--optimzer", type=str, help="")
 Args.add_argument("--weightDecay", type=float, help="L2 weight decay.")
 Args.add_argument("--momentum", type=float, help="SGD Momentum.")
 
-class SGD(torch.optim.SGD):
+class SGDW(torch.optim.SGD):
+    """ decouples weight decay from lr in SGD (https://arxiv.org/pdf/1711.05101.pdf)
+    """
+    def __init__(self, params, weight_decay=2e-4, **kwargs):
+        defaults = dict(weight_decay=0,
+                        **kwargs)
+        super(SGDW, self).__init__(params, **defaults)
+        
+        # add 'weight_decay_decoupled' manually
+        self.defaults.update(weight_decay_decoupled=weight_decay)
+        for group in self.param_groups:
+            group['weight_decay_decoupled'] = weight_decay
+
+    def step(self):
+        """
+        run normal sgd with wd=0 and apply decoupled wd afterwards
+        """
+        super(SGDW, self).step()
+        for group in self.param_groups:
+            for p in group['params']:
+                if p.grad is not None:
+                    p.add_(p, alpha=-group['weight_decay_decoupled'])
+
+
+class Optimizer(SGDW):
     def __init__(self, params, **kwargs):
         defaults = dict(lr           = Args.learningRate,
                         momentum     = Args.momentum,
                         weight_decay = Args.weightDecay,
                         nesterov     = Args.nesterov,
                         **kwargs)
-        super(SGD, self).__init__(params, **defaults)
+        super(Optimizer, self).__init__(params, **defaults)
         self.batchSizeMult = Args.batchSizeMult
         self.batchCounter = 0
 
@@ -23,7 +47,7 @@ class SGD(torch.optim.SGD):
     def step(self):
         if self.batchSizeMult == 1:
             #handle == 1 case seperately for better performance 
-            super(SGD, self).step()
+            super(Optimizer, self).step()
             self.zero_grad()
         else:
             self.batchCounter += 1
@@ -35,12 +59,12 @@ class SGD(torch.optim.SGD):
                         if p.grad is None: continue
                         p.grad.div_(self.batchSizeMult)
 
-                super(SGD, self).step()
+                super(Optimizer, self).step()
                 self.zero_grad()
 
 
     def load_state_dict(self, state_dict) -> None:
-        super(SGD, self).load_state_dict(state_dict)
+        super(Optimizer, self).load_state_dict(state_dict)
         
         #set parameters to Args parameters, otherwise paremeters from state dictionary will stay in use
         self.defaults["lr"] = Args.learningRate
@@ -59,3 +83,4 @@ class SGD(torch.optim.SGD):
                 state = self.state[p]
                 if 'momentum_buffer' in state:
                     del state["momentum_buffer"]
+
