@@ -38,13 +38,11 @@ Args.add_argument("--contin", type=bool, help="Whether to continue from checkpoi
 Args.add_argument("--freezeBN", type=bool, help="Whether to freezeBN.")
 
 Args.add_argument("--local_rank", type=int, help="local process rank. catched form 'SLURM_PROCID' if started with slurm")
-Args.add_argument("--nodes", type=int, help="")
-Args.add_argument("--world_size", type=int, help="")
 
 
 def train() -> None:
     logDir = os.path.join(Args.logDir, Args.logSubDir)
-    torch.distributed.init_process_group(backend="nccl", init_method="env://", world_size=Args.world_size, rank=Args.local_rank)
+    torch.distributed.init_process_group(backend="nccl", init_method="env://")
     localGPU = Args.local_rank % torch.cuda.device_count()
     torch.cuda.set_device(localGPU)
 
@@ -135,9 +133,6 @@ if __name__ == "__main__":
         Args.parse_args_contin(parameters)
 
     Args.local_rank = int(os.getenv("LOCAL_RANK", os.getenv("SLURM_PROCID", Args.local_rank)))
-    Args.nodes      = int(os.getenv("SLURM_JOB_NUM_NODES", Args.nodes))
-    Args.world_size = torch.cuda.device_count() * Args.nodes # @TODO calc world size correctly in single GPU case (on multi GPU machine)
-
     initialize() # set up seed and cudnn
 
     if Args.local_rank == 0:
