@@ -46,7 +46,7 @@ class Optimizer(SGDW):
     @torch.no_grad()
     def step(self):
         if self.batchSizeMult == 1:
-            #handle == 1 case seperately for better performance 
+            #handle == 1 case separately for better performance 
             super(Optimizer, self).step()
             self.zero_grad()
         else:
@@ -66,7 +66,7 @@ class Optimizer(SGDW):
     def load_state_dict(self, state_dict) -> None:
         super(Optimizer, self).load_state_dict(state_dict)
         
-        #set parameters to Args parameters, otherwise paremeters from state dictionary will stay in use
+        #set parameters to Args parameters, otherwise parameters from state dictionary will stay in use
         self.defaults["lr"] = Args.learningRate
         self.defaults["momentum"] = Args.momentum
         self.defaults["weight_decay"] = Args.weightDecay
