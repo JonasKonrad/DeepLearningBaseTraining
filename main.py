@@ -67,7 +67,6 @@ def train() -> None:
         startEpoch = modelSaver.loadModel("checkpoint.model")
         startEpoch += 1
         model = model.cuda(localGPU)
-        log._print_header()
         if startEpoch >= Args.epochs:
             raise RuntimeError(f"Can't continue model from epoch {startEpoch} to max epoch {Args.epochs}.")
     else:
