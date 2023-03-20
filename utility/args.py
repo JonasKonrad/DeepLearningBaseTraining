@@ -76,8 +76,16 @@ class Args(metaclass=MetaClass):
         
     @classmethod
     def parse_args_contin(cls, defaults: dict) -> None:
-        cls.parser.set_defaults(**defaults)
-        cls.data = cls.parser.parse_args()
+        defaults["contin"] = True #make sure contin argument is not overwritten by defaults from param.json file
+        cls.parser.set_defaults(**defaults) #read defaults from param.json file
+        
+        # parse ifile argument here only to not throw an error by real parser
+        init_file_name_parser = ar.ArgumentParser(description="",add_help=False)
+        init_file_name_parser.add_argument("-i", "--ifile", help="input parameter file", default='input.ini',metavar="FILE")
+        _, remaining_argv = init_file_name_parser.parse_known_args()
+        
+        cls.data = cls.parser.parse_args(remaining_argv)
+
 
 
 def make_bool(arg: Any) -> bool:
