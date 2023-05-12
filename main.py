@@ -6,7 +6,7 @@ import json
 from models import getModel
 from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
-from utility.log import Log
+from utility.dataLogger import DataLogger
 from utility.utils import initialize
 from utility.LRScheduler import getLRScheduler, _LRScheduler
 from utility.optimizer import Optimizer
@@ -35,8 +35,6 @@ Args.add_argument("--logDir", type=str, help="main directory to store logs")
 Args.add_argument("--logSubDir", type=str, help="subdir in logDir to store logs for this run")
 Args.add_argument("--epochs", type=int, help="Total number of epochs")
 Args.add_argument("--contin", type=bool, help="Whether to continue from checkpoint. In continue mode parameters are read from params.json file, input file is ignored.")
-Args.add_argument("--freezeBN", type=bool, help="Whether to freezeBN.")
-
 Args.add_argument("--local_rank", type=int, help="local process rank. catched form 'SLURM_PROCID' if started with slurm")
 
 
@@ -46,14 +44,12 @@ def train() -> None:
     localGPU = Args.local_rank % torch.cuda.device_count()
     torch.cuda.set_device(localGPU)
 
-    log = Log(logDir = logDir)
-
+    dataLogger = DataLogger()
     dataset = DataLoader()
 
     model = getModel(num_classes=dataset.numClasses)
     model = model.cuda(localGPU)
-    if not Args.freezeBN:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = torch.nn.parallel.DistributedDataParallel(model)
 
 
@@ -72,19 +68,18 @@ def train() -> None:
     else:
         modelSaver(0, 0)
 
-    log.print_header()
+    dataLogger.printHeader()
+    state = {
+        "model": model,
+        "lrScheduler": lrScheduler,
+        "optimizer": optimizer,
+    }
     for epoch in range(startEpoch, Args.epochs+1):
         dataset.train.sampler.set_epoch(epoch)
 
         model.train()
         numBatches = len(dataset.train)
-        log.train(epoch, len_dataset=numBatches)
-
-        if Args.freezeBN:
-            for m in model.modules():
-                if isinstance(m, torch.nn.BatchNorm2d):
-                    m.training = False
-                    m.track_running_stats = False
+        dataLogger.startTrain(trainDataLen = numBatches)
 
         for i, batch in enumerate(dataset.train):
             inputs, targets = (b.cuda(localGPU) for b in batch)
@@ -93,31 +88,36 @@ def train() -> None:
 
             loss = smooth_crossentropy(predictions, targets)
             loss.mean().backward()
-            logs = {"loss": loss}
             
             optimizer.step()
 
             lrScheduler.step(epoch-1, (i+1)/numBatches)
 
             with torch.no_grad():
-                logs["accuracy"] = torch.argmax(predictions.data, 1) == targets
-                log(logs, learning_rate = lrScheduler.get_last_lr()[0])
+                state["loss"] = loss
+                state["predictions"] = predictions
+                state["targets"] = targets
+                dataLogger(state)
 
+        dataLogger.flush()
+        
+        dataLogger.startTest()
         model.eval()
-        log.eval(len_dataset=len(dataset.test))
-
         with torch.no_grad():
-            for batch in dataset.test:
+            # for batch in dataset.test:
+            for j, batch in enumerate(dataset.test):
+                if j == 10: break
                 inputs, targets = (b.cuda(localGPU) for b in batch)
 
                 predictions = model(inputs)
                 loss = smooth_crossentropy(predictions, targets)
-                correct = torch.argmax(predictions, 1) == targets
-                log({"loss": loss, "accuracy": correct})
+                state["loss"] = loss
+                state["predictions"] = predictions
+                state["targets"] = targets
+                dataLogger(state)
 
-            log.evalEnd()
-        
-            modelSaver(epoch, log.getScalar("accuracy"))
+            dataLogger.flush()
+            modelSaver(epoch, 1) #@TODO log.getScalar("accuracy")
 
 
 

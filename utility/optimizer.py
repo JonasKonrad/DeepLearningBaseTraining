@@ -8,31 +8,7 @@ Args.add_argument("--optimzer", type=str, help="")
 Args.add_argument("--weightDecay", type=float, help="L2 weight decay.")
 Args.add_argument("--momentum", type=float, help="SGD Momentum.")
 
-class SGDW(torch.optim.SGD):
-    """ decouples weight decay from lr in SGD (https://arxiv.org/pdf/1711.05101.pdf)
-    """
-    def __init__(self, params, weight_decay=2e-4, **kwargs):
-        defaults = dict(weight_decay=0,
-                        **kwargs)
-        super(SGDW, self).__init__(params, **defaults)
-        
-        # add 'weight_decay_decoupled' manually
-        self.defaults.update(weight_decay_decoupled=weight_decay)
-        for group in self.param_groups:
-            group['weight_decay_decoupled'] = weight_decay
-
-    def step(self):
-        """
-        run normal sgd with wd=0 and apply decoupled wd afterwards
-        """
-        super(SGDW, self).step()
-        for group in self.param_groups:
-            for p in group['params']:
-                if p.grad is not None:
-                    p.add_(p, alpha=-group['weight_decay_decoupled'])
-
-
-class Optimizer(SGDW):
+class Optimizer(torch.optim.SGD):
     def __init__(self, params, **kwargs):
         defaults = dict(lr           = Args.learningRate,
                         momentum     = Args.momentum,
