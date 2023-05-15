@@ -92,20 +92,19 @@ class DataLogger:
 
     def flush(self) -> None:
         if torch.distributed.get_rank() == 0:
+            self.printTerminal()
+            if not self.train:
+                print()
             with h5py.File(self.filePath, "r+") as file:
                 for metric in self.metrics:
                     if self.train and metric.logTrain:
                         metric.flushData(file, mode = "train" if self.train else "test")
                     if not self.train and metric.logTest:
                         metric.flushData(file, mode = "train" if self.train else "test")
-            if not self.train:
-                print()
             
 
     def printTerminal(self) -> None:
         """ print to terminal """
-        # for metric in self.metrics:
-            # print(metric.name, metric.getDisplayStr())
         if self.train:
             self.trainString = f"{'│'.join([metric.getDisplayStr().center(self.columnLen) for metric in self.printTrainMetrics])}"
             
