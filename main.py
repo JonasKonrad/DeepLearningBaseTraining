@@ -26,6 +26,7 @@ Args.add_argument("--local_rank", type=int, help="local process rank. catched fo
 
 
 def train() -> None:
+    torch.cuda.set_device(Args.local_rank)
     torch.distributed.init_process_group(backend="nccl", init_method="env://", rank=Args.local_rank)
     localGPU = Args.local_rank % torch.cuda.device_count()
     torch.cuda.set_device(localGPU)
