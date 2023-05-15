@@ -2,6 +2,7 @@ from torchvision import models
 from typing import Union, List, Dict, Any, cast
 
 from utility.args import Args
+import torch.nn as nn
 
 cfgs: Dict[str, List[Union[str, int]]] = {
     11: [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
@@ -12,10 +13,15 @@ cfgs: Dict[str, List[Union[str, int]]] = {
 
 
 class VGG(models.VGG):
-    def __init__(self, **kwargs):
+    def __init__(self, num_classes = 10):
         if Args.depth in cfgs:
             cfg = cfgs[Args.depth]
         else:
             raise RuntimeError(f"Depth {Args.depth} is not supported for VGG. Select one of {', '.join(map(str,cfgs.keys()))}.")
 
-        super(VGG, self).__init__(models.vgg.make_layers(cfg, batch_norm=Args.BN), **kwargs)
+        super(VGG, self).__init__(models.vgg.make_layers(cfg, batch_norm=Args.BN), num_classes = num_classes)
+
+    def setBatchNormTracking(self, track_running_stats: bool):
+        for m in self.modules():
+            if isinstance(m, nn.modules.batchnorm._BatchNorm):
+                m.track_running_stats = track_running_stats

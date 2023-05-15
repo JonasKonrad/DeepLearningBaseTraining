@@ -1,6 +1,7 @@
 from .wideResNet import WideResNet
-from .vanillaNet import VanillaNet
-from .efficientNet import EfficientNet
+from .resnet_CIFAR import ResNetCIFAR
+from .resnet import ResNet
+from .vit import SimpleViT
 from .vgg import VGG
 import torch
 
@@ -13,24 +14,18 @@ Args.add_argument("--BN", type=bool, help="use batch norm ?")
 Args.add_argument("--depth", type=int, help="Number of layers.")
 
 
-def effNetWrapper(num_classes, *args, **kwargs):
-    return EfficientNet.from_name('efficientnet-b7', num_classes=num_classes)
-
-def effNetWrapper_pretrained(num_classes, *args, **kwargs):
-    return EfficientNet.from_pretrained('efficientnet-b7', num_classes=num_classes)
-
 
 modelDict = {
-    "WRN"              : WideResNet,
-    "vanilla"          : VanillaNet,
-    "VGG"              : VGG,
-    "EfficientNet"     : effNetWrapper,
-    "EfficientNet_pre" : effNetWrapper_pretrained,
+    "WRN" : WideResNet,
+    "resnet": ResNet,
+    "resnetCIFAR": ResNetCIFAR,
+    "ViT": SimpleViT,
+    "VGG": VGG,
 }
 
 
-def getModel(num_classes: int) -> torch.nn.Module:
+def getModel() -> torch.nn.Module:
     if Args.model in modelDict:
-        return modelDict[Args.model](num_classes = num_classes)
+        return modelDict[Args.model]
     else:
         raise RuntimeError(f"Model '{Args.model}' not found. Available models: {', '.join(modelDict.keys())}")

@@ -10,13 +10,11 @@ Args.add_argument("--widthFactor", type=int, help="How many times wider compared
 class BasicBlock(nn.Module):
     def __init__(self, in_planes, out_planes, stride, dropRate=0.0):
         super(BasicBlock, self).__init__()
-        if Args.BN:
-            self.bn1 = nn.BatchNorm2d(in_planes)
+        self.bn1 = nn.BatchNorm2d(in_planes)
         self.relu1 = nn.ReLU(inplace=True)
         self.conv1 = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
-        if Args.BN:
-            self.bn2 = nn.BatchNorm2d(out_planes)
+        self.bn2 = nn.BatchNorm2d(out_planes)
         self.relu2 = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(out_planes, out_planes, kernel_size=3, stride=1,
                                padding=1, bias=False)
@@ -26,14 +24,11 @@ class BasicBlock(nn.Module):
                                padding=0, bias=False) or None
     def forward(self, x):
         if not self.equalInOut:
-            if Args.BN:
-                x = self.bn1(x)
+            x = self.bn1(x)
             x = self.relu1(x)
         else:
-            if Args.BN: out = self.relu1(self.bn1(x))
-            else:        out = self.relu1(x)
-        if Args.BN: out = self.relu2(self.bn2(self.conv1(out if self.equalInOut else x)))
-        else:        out = self.relu2(self.conv1(out if self.equalInOut else x))
+            out = self.relu1(self.bn1(x))
+        out = self.relu2(self.bn2(self.conv1(out if self.equalInOut else x)))
         if self.droprate > 0:
             out = F.dropout(out, p=self.droprate, training=self.training)
         out = self.conv2(out)
@@ -74,8 +69,7 @@ class WideResNet(nn.Module):
         # 3rd block
         self.block3 = NetworkBlock(n, nChannels[2], nChannels[3], block, 2, dropRate)
         # global average pooling and classifier
-        if Args.BN:
-            self.bn1 = nn.BatchNorm2d(nChannels[3])
+        self.bn1 = nn.BatchNorm2d(nChannels[3])
         self.relu = nn.ReLU(inplace=True)
         self.fc = nn.Linear(nChannels[3], num_classes)
         self.nChannels = nChannels[3]
@@ -91,7 +85,7 @@ class WideResNet(nn.Module):
 
     def setBatchNormTracking(self, track_running_stats: bool):
         for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
+            if isinstance(m, nn.modules.batchnorm._BatchNorm):
                 m.track_running_stats = track_running_stats
 
     def forward(self, x):
@@ -99,8 +93,7 @@ class WideResNet(nn.Module):
         out = self.block1(out)
         out = self.block2(out)
         out = self.block3(out)
-        if Args.BN:
-            out = self.bn1(out)
+        out = self.bn1(out)
         out = self.relu(out)
         out = F.avg_pool2d(out, 8, 1, 0)
         out = out.view(-1, self.nChannels)

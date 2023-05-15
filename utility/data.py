@@ -2,9 +2,10 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import os
-from .augmentation import AutoAugment, Cutout
+from .augmentation import Cutout
 import numpy as np
 import random
+
 
 from utility.args import Args
 
@@ -14,6 +15,21 @@ def worker_init_fn(id):
     np.random.seed([uint64_seed >> 32, uint64_seed & 0xffff_ffff])
 
 
+class NormalizeMinMax(torch.nn.Module):
+    """Normalize a x\in[0,1] tensor to x\in[-1,1]"""
+    def __init__(self, inplace = False):
+        super().__init__()
+        self.min = -1
+        self.max = 1
+        self.inplace = inplace
+
+    def forward(self, tensor: torch.Tensor) -> torch.Tensor:
+        if not self.inplace:
+            tensor = tensor.clone()
+
+        tensor.mul_(self.max-self.min).add_(self.min)
+        return tensor
+
 class CenterCrop(torch.nn.Module):
     def __init__(self, crop_fraction = 0.875):
         super().__init__()
@@ -21,18 +37,18 @@ class CenterCrop(torch.nn.Module):
 
     def forward(self, img):
         size = int(min(img.size) * self.crop_fraction)
-        return torchvision.transforms.functional.center_crop(img, size)
+        return transforms.functional.center_crop(img, size)
 
 class ImageNet(torchvision.datasets.ImageFolder):
     def __init__(self, root, train = True, download = None, transform = []):
         self.train = train
         if train:
-            dir = os.path.join(root, 'train')
+            dir = os.path.join(root, "ImageNet", 'train')
             transform.transforms = [
                 transforms.RandomResizedCrop(Args.imageSize if Args.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
                 ] + transform.transforms
         else:
-            dir = os.path.join(root, 'val')
+            dir = os.path.join(root, "ImageNet", 'val')
             transform.transforms = [
                 CenterCrop(),
                 ] + transform.transforms
@@ -62,7 +78,11 @@ Args.add_argument("--flip", type=bool, help="flip horizontally")
 Args.add_argument("--crop", type=bool, help="crop 32x32 padding 4")
 Args.add_argument("--cut", type=bool, help="cutout")
 Args.add_argument("--cutoutProp", type=float, help="Probability for cutout augmenation.")
-Args.add_argument("--autoAugment", type=bool, help="autoAugment")
+Args.add_argument("--randAugment", type=bool, help="")
+Args.add_argument("--randAugment_magnitude", type=int, help="")
+Args.add_argument("--mixup", type=bool, help="")
+Args.add_argument("--mixupProp", type=float, help="")
+Args.add_argument("--normalize", type=str, help="std or min_max")
 
 class DataLoader:
     def __init__(self):
@@ -72,50 +92,59 @@ class DataLoader:
         except KeyError:
             raise NameError(f"Dataset {self.datasetName} not found. Available datasets are: {', '.join(availableDatasets.keys())}")
 
+        if Args.normalize not in ["std", "min_max"]:
+            raise RuntimeError(f"Arguments 'normalize' must be 'std' or 'min_max' but is '{Args.normalize}'")
 
-        if self.datasetName in dataSetStatistics:
-            mean, std = dataSetStatistics[self.datasetName]
-        else:
-            print("Calculating Mean and Std...")
-            mean, std = self._get_statistics()
-            print(f"Mean = {list(map(float,mean))}, Std = {list(map(float,std))}")
+        if Args.normalize == "std":
+            if self.datasetName in dataSetStatistics:
+                mean, std = dataSetStatistics[self.datasetName]
+            else:
+                print("Calculating Mean and Std...")
+                mean, std = self._get_statistics()
+                print(f"Mean = {list(map(float,mean))}, Std = {list(map(float,std))}")
 
 
         transform_list = []
-        if Args.autoAugment:
-            transform_list.append(AutoAugment(datasetName = self.datasetName))
+        if Args.mixup:
+            raise NotImplementedError #@TODO add mixup
+        if Args.randAugment:
+            transform_list.append(transforms.RandAugment(magnitude = Args.randAugment_magnitude))
         if Args.flip:
-            transform_list.append(torchvision.transforms.RandomHorizontalFlip())
+            transform_list.append(transforms.RandomHorizontalFlip())
         if Args.cut:
             transform_list.append(Cutout(mask_val=mean))
         if Args.crop and self.datasetName in ["CIFAR10","CIFAR100"]:
-            transform_list.append(torchvision.transforms.RandomCrop(size=(32, 32), padding=4))
+            transform_list.append(transforms.RandomCrop(size=(32, 32), padding=4))
 
         if Args.imageSize != 0:
             transform_list += [
-                transforms.Resize(Args.imageSize, interpolation = torchvision.transforms.InterpolationMode.BICUBIC),
+                transforms.Resize(Args.imageSize, interpolation = transforms.InterpolationMode.BICUBIC),
             ]
 
         transform_list += [
             transforms.ToTensor(),
-            transforms.Normalize(mean, std),
+            transforms.Normalize(mean, std) if Args.normalize == "std" else NormalizeMinMax(),
         ]
         train_transform = transforms.Compose(transform_list)
 
         if Args.imageSize != 0:
             test_transform = [
-                transforms.Resize(Args.imageSize, interpolation = torchvision.transforms.InterpolationMode.BICUBIC),
+                transforms.Resize(Args.imageSize, interpolation = transforms.InterpolationMode.BICUBIC),
             ]
         else:
             test_transform = []
 
         test_transform = transforms.Compose(test_transform + [
             transforms.ToTensor(),
-            transforms.Normalize(mean, std)
+            transforms.Normalize(mean, std) if Args.normalize == "std" else NormalizeMinMax(),
         ])
 
         train_set = self.dataset(root=Args.dataDir, train=True, download=True, transform=train_transform)
         test_set  = self.dataset(root=Args.dataDir, train=False, download=True, transform=test_transform)
+        
+        if self.datasetName == "ImageNet":
+            assert len(train_set) == 1281167, "train data is incomplete!"
+            assert len(test_set) == 50000, "test data is incomplete!"
         
         # to get random order of train data the seed has to be set manually. the seed value must be constant among all processes. 
         seed = torch.tensor(random.getrandbits(32)).cuda(Args.local_rank % torch.cuda.device_count())

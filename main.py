@@ -4,12 +4,12 @@ import torch
 import json
 
 from models import getModel
+from optimizer import getOptimizer
 from utility.loss import smooth_crossentropy
 from utility.data import DataLoader
 from utility.dataLogger import DataLogger
 from utility.utils import initialize
 from utility.LRScheduler import getLRScheduler, _LRScheduler
-from utility.optimizer import Optimizer
 from utility.modelSaver import ModelSaver
 from utility.args import Args
 
@@ -27,7 +27,6 @@ Args.add_argument("--local_rank", type=int, help="local process rank. catched fo
 
 
 def train() -> None:
-    logDir = os.path.join(Args.logDir, Args.logSubDir)
     torch.distributed.init_process_group(backend="nccl", init_method="env://", rank=Args.local_rank)
     localGPU = Args.local_rank % torch.cuda.device_count()
     torch.cuda.set_device(localGPU)
@@ -35,14 +34,15 @@ def train() -> None:
     dataLogger = DataLogger()
     dataset = DataLoader()
 
-    model = getModel(num_classes=dataset.numClasses)
+    model = getModel()(num_classes=dataset.numClasses)
     model = model.cuda(localGPU)
+    # if hasattr(torch, "compile"):
+    #     model = torch.compile(model)
     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = torch.nn.parallel.DistributedDataParallel(model)
 
 
-    optimizer = Optimizer(model.parameters())
-    # optimizer: torch.optim.Optimizer = optimizerDict[Args.model](num_classes=dataset.numClasses)
+    optimizer = getOptimizer()(model.parameters(), model.named_parameters())
     lrScheduler: _LRScheduler = getLRScheduler(optimizer)
     modelSaver = ModelSaver(model = model, optimizer = optimizer)
     
@@ -77,7 +77,11 @@ def train() -> None:
             loss = smooth_crossentropy(predictions, targets)
             loss.mean().backward()
             
+            if Args.grad_clip_norm != 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), Args.grad_clip_norm)
+
             optimizer.step()
+            optimizer.zero_grad()
 
             lrScheduler.step(epoch-1, (i+1)/numBatches)
 
@@ -92,9 +96,7 @@ def train() -> None:
         dataLogger.startTest()
         model.eval()
         with torch.no_grad():
-            # for batch in dataset.test:
-            for j, batch in enumerate(dataset.test):
-                if j == 10: break
+            for batch in dataset.test:
                 inputs, targets = (b.cuda(localGPU) for b in batch)
 
                 predictions = model(inputs)
@@ -111,6 +113,8 @@ def train() -> None:
 
 if __name__ == "__main__":
     Args.parse_args()
+    if hasattr(torch, "set_float32_matmul_precision"):
+        torch.set_float32_matmul_precision("high")
 
     logDir = os.path.join(Args.logDir, Args.logSubDir)
 
