@@ -35,8 +35,7 @@ if __name__ == "__main__":
             parameters = json.load(file)
         Args.parse_args_contin(parameters)
 
-
-    torch.distributed.init_process_group(backend="nccl", init_method="env://")
+    torch.distributed.init_process_group(backend="nccl", init_method="env://", rank = int(os.getenv("SLURM_PROCID", -1))) #set rank to 'SLURM_PROCID' if started with slurm, else to -1
     local_rank = torch.distributed.get_rank() % torch.cuda.device_count()
     torch.cuda.set_device(local_rank)
 
@@ -53,8 +52,8 @@ if __name__ == "__main__":
 
     model = getModel()(num_classes=dataset.numClasses)
     model = model.cuda(local_rank)
-    # if hasattr(torch, "compile"):
-    #     model = torch.compile(model)
+    if hasattr(torch, "compile"):
+        model = torch.compile(model)
     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = torch.nn.parallel.DistributedDataParallel(model)
 
