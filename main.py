@@ -54,7 +54,7 @@ def train() -> None:
         if startEpoch >= Args.epochs:
             raise RuntimeError(f"Can't continue model from epoch {startEpoch} to max epoch {Args.epochs}.")
     else:
-        modelSaver(0, 0)
+        modelSaver(0)
 
     dataLogger.printHeader()
     state = {
@@ -107,7 +107,7 @@ def train() -> None:
                 dataLogger(state)
 
             dataLogger.flush()
-            modelSaver(epoch, 1) #@TODO log.getScalar("accuracy")
+            modelSaver(epoch)
 
 
 
