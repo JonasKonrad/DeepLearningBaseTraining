@@ -41,7 +41,7 @@ class Args(metaclass=MetaClass):
     def parse_args(cls) -> None:
         #only read input file name
         init_file_name_parser = ar.ArgumentParser(description="Blank Project",add_help=False)
-        init_file_name_parser.add_argument("-i", "--ifile", help="input parameter file", default='input.ini',metavar="FILE")
+        init_file_name_parser.add_argument("-i", "--ifile", help="input parameter file", default='configs/default.ini',metavar="FILE")
         args, remaining_argv = init_file_name_parser.parse_known_args()
         
         config = configparser.ConfigParser()
