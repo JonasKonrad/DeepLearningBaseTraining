@@ -4,23 +4,24 @@ import matplotlib.pylab as plt
 import os
 import h5py
 
-
 from plotUtils import  StdMean
 
+plt.style.use("./presentation.mplstyle")
+# plt.style.use("./paper.mplstyle")
 
 dataDir = "../../logs"
-endEpoch = 5
-repititions = 2
-paramList = ["1", "2", "3"]
+endEpoch = 100
+repetitions = 3
+paramList = [1, 2, 3]
 
 fig, ax = plt.subplots()
 
 accuracy = {}
-for postfix in [""] + [f"_rep_{i}" for i in range(2,repititions+1)]:
+for rep in range(1,repetitions+1):
     for i_param, param in enumerate(paramList):
         try:
-            folder = f"test_{param}{postfix}"
-            with h5py.File(os.path.join(dataDir, folder, "logs.hdf5"), "r") as f:
+            folder = f"test_{param}_rep_{rep}"
+            with h5py.File(os.path.join(dataDir, folder, "data.hdf5"), "r") as f:
                 data = f["test"]["accuracy"][:]
         except OSError:
             print(f"No Logfile found in folder {folder}.")
