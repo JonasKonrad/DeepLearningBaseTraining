@@ -22,20 +22,37 @@ Args.add_argument("--logDir", type=str, help="main directory to store logs")
 Args.add_argument("--logSubDir", type=str, help="subdir in logDir to store logs for this run")
 Args.add_argument("--epochs", type=int, help="Total number of epochs")
 Args.add_argument("--contin", type=bool, help="Whether to continue from checkpoint. In continue mode parameters are read from params.json file, input file is ignored.")
-Args.add_argument("--local_rank", type=int, help="local process rank. catched form 'SLURM_PROCID' if started with slurm")
+
+if __name__ == "__main__":
+    Args.parse_args()
+    if hasattr(torch, "set_float32_matmul_precision"):
+        torch.set_float32_matmul_precision("high")
+
+    logDir = os.path.join(Args.logDir, Args.logSubDir)
+
+    if Args.contin:
+        with open(os.path.join(logDir, "params.json"), "r") as file:
+            parameters = json.load(file)
+        Args.parse_args_contin(parameters)
 
 
-def train() -> None:
-    torch.cuda.set_device(Args.local_rank)
-    torch.distributed.init_process_group(backend="nccl", init_method="env://", rank=Args.local_rank)
-    localGPU = Args.local_rank % torch.cuda.device_count()
-    torch.cuda.set_device(localGPU)
+    torch.distributed.init_process_group(backend="nccl", init_method="env://")
+    local_rank = torch.distributed.get_rank() % torch.cuda.device_count()
+    torch.cuda.set_device(local_rank)
+
+    initialize() # set up seed and cudnn
+
+    if torch.distributed.get_rank() == 0:
+        os.makedirs(logDir, exist_ok=True)
+        with open(os.path.join(logDir, "params.json"), "w") as file:
+            json.dump(vars(Args.data), file, indent = 4)
+
 
     dataLogger = DataLogger()
     dataset = DataLoader()
 
     model = getModel()(num_classes=dataset.numClasses)
-    model = model.cuda(localGPU)
+    model = model.cuda(local_rank)
     # if hasattr(torch, "compile"):
     #     model = torch.compile(model)
     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -50,7 +67,7 @@ def train() -> None:
     if Args.contin:
         startEpoch = modelSaver.loadModel("checkpoint.model")
         startEpoch += 1
-        model = model.cuda(localGPU)
+        model = model.cuda(local_rank)
         if startEpoch >= Args.epochs:
             raise RuntimeError(f"Can't continue model from epoch {startEpoch} to max epoch {Args.epochs}.")
     else:
@@ -71,7 +88,7 @@ def train() -> None:
         dataLogger.startTrain(trainDataLen = numBatches)
 
         for i, batch in enumerate(dataset.train):
-            inputs, targets = (b.cuda(localGPU) for b in batch)
+            inputs, targets = (b.cuda(local_rank) for b in batch)
 
             predictions = model(inputs)
 
@@ -98,7 +115,7 @@ def train() -> None:
         model.eval()
         with torch.no_grad():
             for batch in dataset.test:
-                inputs, targets = (b.cuda(localGPU) for b in batch)
+                inputs, targets = (b.cuda(local_rank) for b in batch)
 
                 predictions = model(inputs)
                 loss = smooth_crossentropy(predictions, targets)
@@ -109,27 +126,3 @@ def train() -> None:
 
             dataLogger.flush()
             modelSaver(epoch)
-
-
-
-if __name__ == "__main__":
-    Args.parse_args()
-    if hasattr(torch, "set_float32_matmul_precision"):
-        torch.set_float32_matmul_precision("high")
-
-    logDir = os.path.join(Args.logDir, Args.logSubDir)
-
-    if Args.contin:
-        with open(os.path.join(logDir, "params.json"), "r") as file:
-            parameters = json.load(file)
-        Args.parse_args_contin(parameters)
-
-    Args.local_rank = int(os.getenv("LOCAL_RANK", os.getenv("SLURM_PROCID", Args.local_rank)))
-    initialize() # set up seed and cudnn
-
-    if Args.local_rank == 0:
-        os.makedirs(logDir, exist_ok=True)
-        with open(os.path.join(logDir, "params.json"), "w") as file:
-            json.dump(vars(Args.data), file, indent = 4)
-
-    train()

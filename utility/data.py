@@ -8,6 +8,50 @@ import random
 from .augmentation import Cutout
 from utility.args import Args
 
+
+Args.add_argument("--dataThreads", type=int, help="Number of CPU threads for dataloaders.")
+Args.add_argument("--dataDir", type=str, help="main directory to store datasets")
+Args.add_argument("--batchSize", type=int, help="batch size")
+Args.add_argument("--dataset", type=str, help="Dataset")
+Args.add_argument("--imageSize", type=int, help="resize images after augmentation. 0 for no resizing")
+Args.add_argument("--flip", type=bool, help="flip horizontally")
+Args.add_argument("--crop", type=bool, help="crop 32x32 padding 4")
+Args.add_argument("--cut", type=bool, help="cutout")
+Args.add_argument("--cutoutProp", type=float, help="Probability for cutout augmenation.")
+Args.add_argument("--randAugment", type=bool, help="")
+Args.add_argument("--randAugment_magnitude", type=int, help="")
+Args.add_argument("--mixup", type=bool, help="")
+Args.add_argument("--mixupProp", type=float, help="")
+Args.add_argument("--normalize", type=str, help="std or min_max")
+
+class ImageNet(torchvision.datasets.ImageFolder):
+    def __init__(self, root, train = True, download = None, transform = []):
+        self.train = train
+        if train:
+            dir = os.path.join(root, "ImageNet", 'train')
+            transform.transforms = [
+                transforms.RandomResizedCrop(Args.imageSize if Args.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
+                ] + transform.transforms
+        else:
+            dir = os.path.join(root, "ImageNet", 'val')
+            transform.transforms = [
+                CenterCrop(),
+                ] + transform.transforms
+
+        super(ImageNet, self).__init__(dir, transform = transform)
+
+# name, numClasses
+availableDatasets = {
+    "ImageNet": [ImageNet, 1000],
+    "CIFAR10" : [torchvision.datasets.CIFAR10 , 10],
+    "CIFAR100": [torchvision.datasets.CIFAR100, 100],
+}
+dataSetStatistics = {
+    "ImageNet": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
+    "CIFAR10" : [[0.4913999140262604, 0.48215872049331665, 0.4465313255786896], [0.24703197181224823, 0.243484228849411, 0.26158687472343445]],
+    "CIFAR100": [[0.5070753693580627, 0.4865487813949585, 0.44091784954071045], [0.2673334777355194, 0.25643861293792725, 0.2761503756046295]],
+}
+
 def worker_init_fn(id):
     """ manually seed each workers np random generator. see https://github.com/pytorch/pytorch/issues/5059"""
     uint64_seed = torch.initial_seed()
@@ -38,50 +82,6 @@ class CenterCrop(torch.nn.Module):
         size = int(min(img.size) * self.crop_fraction)
         return transforms.functional.center_crop(img, size)
 
-class ImageNet(torchvision.datasets.ImageFolder):
-    def __init__(self, root, train = True, download = None, transform = []):
-        self.train = train
-        if train:
-            dir = os.path.join(root, "ImageNet", 'train')
-            transform.transforms = [
-                transforms.RandomResizedCrop(Args.imageSize if Args.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
-                ] + transform.transforms
-        else:
-            dir = os.path.join(root, "ImageNet", 'val')
-            transform.transforms = [
-                CenterCrop(),
-                ] + transform.transforms
-
-        super(ImageNet, self).__init__(dir, transform = transform)
-
-# name, numClasses
-availableDatasets = {
-    "ImageNet": [ImageNet, 1000],
-    "CIFAR10" : [torchvision.datasets.CIFAR10 , 10],
-    "CIFAR100": [torchvision.datasets.CIFAR100, 100],
-}
-dataSetStatistics = {
-    "ImageNet": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
-    "CIFAR10" : [[0.4913999140262604, 0.48215872049331665, 0.4465313255786896], [0.24703197181224823, 0.243484228849411, 0.26158687472343445]],
-    "CIFAR100": [[0.5070753693580627, 0.4865487813949585, 0.44091784954071045], [0.2673334777355194, 0.25643861293792725, 0.2761503756046295]],
-}
-
-
-
-Args.add_argument("--dataThreads", type=int, help="Number of CPU threads for dataloaders.")
-Args.add_argument("--dataDir", type=str, help="main directory to store datasets")
-Args.add_argument("--batchSize", type=int, help="batch size")
-Args.add_argument("--dataset", type=str, help="Dataset")
-Args.add_argument("--imageSize", type=int, help="resize images after augmentation. 0 for no resizing")
-Args.add_argument("--flip", type=bool, help="flip horizontally")
-Args.add_argument("--crop", type=bool, help="crop 32x32 padding 4")
-Args.add_argument("--cut", type=bool, help="cutout")
-Args.add_argument("--cutoutProp", type=float, help="Probability for cutout augmenation.")
-Args.add_argument("--randAugment", type=bool, help="")
-Args.add_argument("--randAugment_magnitude", type=int, help="")
-Args.add_argument("--mixup", type=bool, help="")
-Args.add_argument("--mixupProp", type=float, help="")
-Args.add_argument("--normalize", type=str, help="std or min_max")
 
 class DataLoader:
     def __init__(self):
@@ -146,7 +146,7 @@ class DataLoader:
             assert len(test_set) == 50000, "test data is incomplete!"
         
         # to get random order of train data the seed has to be set manually. the seed value must be constant among all processes. 
-        seed = torch.tensor(random.getrandbits(32)).cuda(Args.local_rank % torch.cuda.device_count())
+        seed = torch.tensor(random.getrandbits(32)).cuda(torch.distributed.get_rank() % torch.cuda.device_count())
         torch.distributed.broadcast(seed, src = 0)
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True , seed = seed.item())
         test_sampler  = torch.utils.data.distributed.DistributedSampler(test_set , shuffle=False)
