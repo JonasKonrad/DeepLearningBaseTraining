@@ -1,6 +1,7 @@
-from utility.args import Args
 import torchvision.models as models
 import torch.nn as nn
+
+from utility.args import Args
 
 class ResNet(models.ResNet):
     def __init__(self, num_classes = 10):

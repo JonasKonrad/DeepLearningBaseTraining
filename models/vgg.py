@@ -1,10 +1,9 @@
 from torchvision import models
-from typing import Union, List, Dict, Any, cast
-
-from utility.args import Args
 import torch.nn as nn
 
-cfgs: Dict[str, List[Union[str, int]]] = {
+from utility.args import Args
+
+cfgs = {
     11: [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     13: [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     16: [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],

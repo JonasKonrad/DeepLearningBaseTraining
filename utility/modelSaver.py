@@ -1,5 +1,6 @@
 import os
 import torch
+
 from utility.args import Args
 
 Args.add_argument("--saveCheckpoint", type=bool, help="save model after each epoch (delete after next epoch)")

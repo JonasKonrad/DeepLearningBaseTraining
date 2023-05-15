@@ -1,6 +1,6 @@
 import torch
+
 from utility.args import Args
-from utility.loss import smooth_crossentropy
 
 class SGD(torch.optim.Optimizer):
     def __init__(self, params, named_parameters):

@@ -2,11 +2,10 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 import os
-from .augmentation import Cutout
 import numpy as np
 import random
 
-
+from .augmentation import Cutout
 from utility.args import Args
 
 def worker_init_fn(id):

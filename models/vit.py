@@ -1,14 +1,14 @@
 #https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/simple_vit.py
+import torch
+from torch import nn
+from einops import rearrange
+from einops.layers.torch import Rearrange
+
 from utility.args import Args
 
 Args.add_argument("--ViTPatchsize", type=int, help="")
 Args.add_argument("--ViTSize", type=str, help="")
 
-import torch
-from torch import nn
-
-from einops import rearrange
-from einops.layers.torch import Rearrange
 
 # helpers
 

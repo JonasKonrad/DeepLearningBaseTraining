@@ -6,16 +6,6 @@ import os
 from utility.args import Args
 from utility.metrics import BaseMetric, available_metrics
 
-
-"""
-@TODO:
-    - make learning rate no special variable (just normal metric) anymore
-    - add option to metric at each batch
-    - implement buffer/flush
-    - slim down this code...
-"""
-
-
 Args.add_argument("--truncate", type=bool, help="truncate log file")
 Args.add_argument("--verbose", type=bool, help="print to terminal")
 Args.add_argument("--metrics", type=str, nargs = "*", help="list of metrics")

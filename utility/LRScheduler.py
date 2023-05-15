@@ -1,4 +1,5 @@
 import math
+
 from utility.args import Args
 
 Args.add_argument("--learningRate", type=float, help="Base learning rate at the start of the training.")

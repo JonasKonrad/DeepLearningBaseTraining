@@ -1,9 +1,8 @@
-from typing import List, Optional
 from torch import Tensor
 import torch
-from utility.args import Args
-from utility.loss import smooth_crossentropy
 import math
+
+from utility.args import Args
 
 class AdamW(torch.optim.Optimizer):
     def __init__(self, params, named_parameters):
@@ -81,12 +80,12 @@ class AdamW(torch.optim.Optimizer):
         return loss
     
 
-def adamW(params: List[Tensor],
-          grads: List[Tensor],
-          exp_avgs: List[Tensor],
-          exp_avg_sqs: List[Tensor],
-          max_exp_avg_sqs: List[Tensor],
-          state_steps: List[int],
+def adamW(params: list[Tensor],
+          grads: list[Tensor],
+          exp_avgs: list[Tensor],
+          exp_avg_sqs: list[Tensor],
+          max_exp_avg_sqs: list[Tensor],
+          state_steps: list[int],
           *,
           beta1: float,
           beta2: float,

@@ -1,12 +1,9 @@
 # https://github.com/dydjw9/Efficient_SAM/blob/main/model/resnet.py
 # https://github.com/weiaicunzai/pytorch-cifar100/blob/master/models/resnet.py
-
-from utility.args import Args
-
-
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from utility.args import Args
 
 
 class BasicBlock(nn.Module):

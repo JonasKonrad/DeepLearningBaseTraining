@@ -1,12 +1,12 @@
+import torch
+
 from .wideResNet import WideResNet
 from .resnet_CIFAR import ResNetCIFAR
 from .resnet import ResNet
 from .vit import SimpleViT
 from .vgg import VGG
-import torch
-
-
 from utility.args import Args
+
 # Define flags here that are used by multiple models to avoid double definitions.
 Args.add_argument("--model", type=str, help="model name (WRN = WideResNet")
 Args.add_argument("--dropout", type=float, help="Dropout rate.")

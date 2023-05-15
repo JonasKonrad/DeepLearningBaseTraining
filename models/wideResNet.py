@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from utility.args import Args
 
 Args.add_argument("--widthFactor", type=int, help="How many times wider compared to normal ResNet.")
