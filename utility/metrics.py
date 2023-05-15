@@ -11,6 +11,7 @@ class BaseMetric:
     maxIterations: int = None
     shape: tuple[int] = () #defines shape of data (excluding length/batch/epoch dimension)
     consolePrintFormat: str = ".4f"
+    concatenateWorkers: bool = True #whether to concatenate data from all workers after iteration or just use local_rank==0's data
     def __init__(self):
         self.buffer = []
         if not self.logTest:
@@ -31,11 +32,34 @@ class BaseMetric:
         """
         return [np.mean(np.concatenate(self.buffer))]
 
+
+    def fetchMetric(self, state: dict):
+        """
+        calls self.calcMetric
+        gather data from workers
+        """
+        worker_metric: np.ndarray = self.calcMetric(state)
+
+        if self.concatenateWorkers:
+            gather_list = [None] * torch.distributed.get_world_size()
+            torch.distributed.gather_object(
+                                    worker_metric,
+                                    object_gather_list = gather_list if torch.distributed.get_rank() == 0 else None,
+                                    dst = 0
+                                    )
+            
+            if torch.distributed.get_rank() == 0:
+                self.buffer.append(np.concatenate(gather_list, axis = 0))
+        else:
+            if torch.distributed.get_rank() == 0:
+                self.buffer.append(worker_metric)
+            
+
+                    
     def calcMetric(self, state: dict):
         """
-        calcMetric should fetch/calculate metric from 'state', move it to cpu and make it ready for reduction by _reduceData
-        add to list self.buffer. self.buffer is lost of np.arrays!!
-        self.buffer += XXXX
+        calcMetric should calculate metric from 'state', move it to cpu, convert to np.ndarray, and make it ready for reduction by _reduceData
+        return: np.array
         """
         raise NotImplementedError
 
@@ -78,27 +102,28 @@ def addMetric(class_):
 class MetricLoss(BaseMetric):
     name = "loss"
     def calcMetric(self, state: dict):
-        self.buffer += [state["loss"].cpu().numpy()]
+        return state["loss"].cpu().numpy()
 
 @addMetric
 class MetricLossPerSample(BaseMetric):
     name = "lossPS"
     def calcMetric(self, state: dict):
-        self.buffer += [state["loss"].cpu().numpy()]
+        return state["loss"].cpu().numpy()
     def _reduceData(self):
         return np.concatenate(self.buffer)
 
 @addMetric
 class MetricLR(BaseMetric):
     logTest: bool = False
+    concatenateWorkers = False
     name = "learningRate"
     consolePrintFormat = ".3e"
     def calcMetric(self, state: dict):
-        self.buffer += [np.array(state["lrScheduler"].get_last_lr())]
+        return np.array(state["lrScheduler"].get_last_lr())
 
 @addMetric
 class MetricAccuracy(BaseMetric):
     name = "accuracy"
     consolePrintFormat = ".2%"
     def calcMetric(self, state: dict):
-        self.buffer += [(torch.argmax(state["predictions"].data, 1) == state["targets"]).to(float).cpu().numpy()]
+        return (torch.argmax(state["predictions"].data, 1) == state["targets"]).to(float).cpu().numpy()

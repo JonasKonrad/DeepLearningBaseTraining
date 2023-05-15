@@ -19,18 +19,6 @@ run:
     python -m torch.distributed.run main.py
 """
 
-"""
-@TODO:
-    - ZeroRedundancyOptimizer?
-    - add model summary
-    - save rnd seed
-    - typing...
-    - reintroduce cpu support
-    - implement PEP 8
-    - update docstrings
-"""
-
-
 Args.add_argument("--logDir", type=str, help="main directory to store logs")
 Args.add_argument("--logSubDir", type=str, help="subdir in logDir to store logs for this run")
 Args.add_argument("--epochs", type=int, help="Total number of epochs")

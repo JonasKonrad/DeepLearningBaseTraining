@@ -49,7 +49,7 @@ class DataLogger:
 
         self.loading_bar = LoadingBar(length=(self.columnLen+1)*len(self.printTestMetrics)-3)
 
-        self.filePath = os.path.join(Args.logDir, Args.logSubDir, "logs.hdf5")
+        self.filePath = os.path.join(Args.logDir, Args.logSubDir, "data.hdf5")
         if torch.distributed.get_rank() == 0:
             if not Args.contin:
                 try:
@@ -69,9 +69,9 @@ class DataLogger:
     def __call__(self, state: dict) -> None:
         for metric in self.metrics:
             if self.train and metric.logTrain:
-                metric.calcMetric(state)
+                metric.fetchMetric(state)
             if not self.train and metric.logTest:
-                metric.calcMetric(state)
+                metric.fetchMetric(state)
 
         self.step += 1
         if torch.distributed.get_rank() == 0:
@@ -91,15 +91,15 @@ class DataLogger:
         self.train = False
 
     def flush(self) -> None:
-        with h5py.File(self.filePath, "r+") as file:
-            for metric in self.metrics:
-                if self.train and metric.logTrain:
-                    metric.flushData(file, mode = "train" if self.train else "test")
-                if not self.train and metric.logTest:
-                    metric.flushData(file, mode = "train" if self.train else "test")
-
-        if not self.train:
-            print()
+        if torch.distributed.get_rank() == 0:
+            with h5py.File(self.filePath, "r+") as file:
+                for metric in self.metrics:
+                    if self.train and metric.logTrain:
+                        metric.flushData(file, mode = "train" if self.train else "test")
+                    if not self.train and metric.logTest:
+                        metric.flushData(file, mode = "train" if self.train else "test")
+            if not self.train:
+                print()
             
 
     def printTerminal(self) -> None:
@@ -123,7 +123,6 @@ class DataLogger:
         return f"{time_seconds // 60:02d}:{time_seconds % 60:02d} min"
 
     def printHeader(self) -> None:
-        pass
         if torch.distributed.get_rank() == 0:
             print(f"┏━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳{'T╺╸R╺╸A╺╸I╺╸N '.center((self.columnLen+1)*len(self.printTrainMetrics)-1,'━')}┳{'T╺╸E╺╸S╺╸T '.center((self.columnLen+1)*len(self.printTestMetrics)-1,'━')}┓")
             print(f"┃                             ┃{' '*((self.columnLen+1)*len(self.printTrainMetrics)-1)}┃{' '*((self.columnLen+1)*len(self.printTestMetrics)-1)}┃")
