@@ -59,6 +59,18 @@ class ExponentialLR(_LRScheduler):
         self.factor = self.gamma ** (self.last_epoch + progress)
 
 
+class CosWarmUpLR(_LRScheduler):
+    def __init__(self, optimizer, last_epoch = -1):
+        super(CosWarmUpLR, self).__init__(optimizer, last_epoch = last_epoch)
+
+        self.warmUpLength = Args.LRScheduler_StartRamp_epochs
+        self.epochsPerPeriod = (Args.epochs-Args.LRScheduler_StartRamp_epochs) / Args.LRScheduler_cos_periods
+
+    def _calcFactor(self, progress):
+        if self.last_epoch + progress < self.warmUpLength:
+            self.factor = (self.last_epoch + progress)/self.warmUpLength
+        else:
+            self.factor = 0.5 * (1 + math.cos((self.last_epoch + progress - self.warmUpLength) / self.epochsPerPeriod * 2*math.pi))
 
 
 Args.add_argument("--LRScheduler_cos_periods", type=float, help="Periods of cosine.")
@@ -137,6 +149,7 @@ schedulerDict = {
     "cos"  : CosineLR,
     "CWR"  : CosineWarmRestartsLR,
     "startRamp"  : StartRamp,
+    "cosWarmUp": CosWarmUpLR,
 }
 
 

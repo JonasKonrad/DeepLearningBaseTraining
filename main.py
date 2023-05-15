@@ -56,6 +56,7 @@ def train() -> None:
     else:
         modelSaver(0)
 
+    torch.distributed.barrier() #wait until all workers are done with initialization
     dataLogger.printHeader()
     state = {
         "model": model,
