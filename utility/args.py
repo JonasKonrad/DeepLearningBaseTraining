@@ -48,7 +48,7 @@ class Args(metaclass=MetaClass):
         config.optionxform = str # make config parse case sensitive
         out = config.read([args.ifile])
         if not out:
-            RuntimeError(f"Input file '{args.ifile}' not found.")
+            raise RuntimeError(f"Input file '{args.ifile}' not found.")
 
         defaults = {}
         for sec in config.sections():
