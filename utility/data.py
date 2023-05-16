@@ -151,8 +151,10 @@ class DataLoader:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_set, shuffle=True , seed = seed.item())
         test_sampler  = torch.utils.data.distributed.DistributedSampler(test_set , shuffle=False)
         
-        self.train = torch.utils.data.DataLoader(train_set, batch_size=Args.batchSize, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = train_sampler)
-        self.test  = torch.utils.data.DataLoader(test_set , batch_size=Args.batchSize, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = test_sampler)
+        #calc BS per worker
+        batch_size = Args.batchSize // torch.distributed.get_world_size() + int(Args.batchSize % torch.distributed.get_world_size() > torch.distributed.get_rank())
+        self.train = torch.utils.data.DataLoader(train_set, batch_size=batch_size, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = train_sampler)
+        self.test  = torch.utils.data.DataLoader(test_set , batch_size=batch_size, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = test_sampler)
 
     def _get_statistics(self):
         data = self.dataset(root=Args.dataDir, train=True, download=True, transform=transforms.ToTensor())

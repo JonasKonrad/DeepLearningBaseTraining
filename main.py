@@ -12,7 +12,6 @@ from utility.LRScheduler import getLRScheduler, _LRScheduler
 from utility.modelSaver import ModelSaver
 from utility.args import Args
 
-
 """
 run:
     python -m torch.distributed.run main.py
@@ -87,6 +86,7 @@ if __name__ == "__main__":
         dataLogger.startTrain(trainDataLen = numBatches)
 
         for i, batch in enumerate(dataset.train):
+            lrScheduler.step(epoch-1, (i+1)/numBatches)
             inputs, targets = (b.cuda(local_rank) for b in batch)
 
             predictions = model(inputs)
@@ -100,7 +100,6 @@ if __name__ == "__main__":
             optimizer.step()
             optimizer.zero_grad()
 
-            lrScheduler.step(epoch-1, (i+1)/numBatches)
 
             with torch.no_grad():
                 state["loss"] = loss
