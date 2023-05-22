@@ -152,6 +152,7 @@ class DataLoader:
         test_sampler  = torch.utils.data.distributed.DistributedSampler(test_set , shuffle=False)
         
         #calc BS per worker
+        # @TODO check if this really works as expected. distributed data sampler might mess this up by not supporting differing batch sizes per worker
         batch_size = Args.batchSize // torch.distributed.get_world_size() + int(Args.batchSize % torch.distributed.get_world_size() > torch.distributed.get_rank())
         self.train = torch.utils.data.DataLoader(train_set, batch_size=batch_size, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = train_sampler)
         self.test  = torch.utils.data.DataLoader(test_set , batch_size=batch_size, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = test_sampler)
