@@ -3,7 +3,7 @@ import torch
 from utility.args import Args
 
 class SGD(torch.optim.Optimizer):
-    def __init__(self, params, named_parameters):
+    def __init__(self, params):
         defaults = dict(
             lr = Args.learningRate,
             momentum = Args.momentum,

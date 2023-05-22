@@ -5,7 +5,7 @@ import math
 from utility.args import Args
 
 class AdamW(torch.optim.Optimizer):
-    def __init__(self, params, named_parameters):
+    def __init__(self, params):
         defaults = dict(lr=Args.learningRate,
                         betas=(0.9, 0.999),
                         eps=1e-8,
