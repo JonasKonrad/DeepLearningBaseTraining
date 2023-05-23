@@ -28,7 +28,7 @@ class BaseMetric:
         default: no reduction
         
         return np.array or convertible to np.array which has shape [dataLen, self.shape], where dataLen is concatenated into file
-        return values has to have at least 1din (i.e. len(...)==1)
+        return values have to have at least 1 dim (i.e. len(...)==1)
         """
         return [np.mean(np.concatenate(self.buffer))]
 

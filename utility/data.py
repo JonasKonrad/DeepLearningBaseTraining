@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 import os
 import numpy as np
 import random
+import warnings
 
 from .augmentation import Cutout
 from utility.args import Args
@@ -152,8 +153,9 @@ class DataLoader:
         test_sampler  = torch.utils.data.distributed.DistributedSampler(test_set , shuffle=False)
         
         #calc BS per worker
-        # @TODO check if this really works as expected. distributed data sampler might mess this up by not supporting differing batch sizes per worker
-        batch_size = Args.batchSize // torch.distributed.get_world_size() + int(Args.batchSize % torch.distributed.get_world_size() > torch.distributed.get_rank())
+        batch_size = round(Args.batchSize / torch.distributed.get_world_size())
+        if batch_size != Args.batchSize / torch.distributed.get_world_size():
+            warnings.warn(f"Batch size of {Args.batchSize} is not divisible by world size ({torch.distributed.get_world_size()}), using batch size of {batch_size*torch.distributed.get_world_size()} instead.")
         self.train = torch.utils.data.DataLoader(train_set, batch_size=batch_size, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = train_sampler)
         self.test  = torch.utils.data.DataLoader(test_set , batch_size=batch_size, num_workers=Args.dataThreads, worker_init_fn=worker_init_fn, sampler = test_sampler)
 
