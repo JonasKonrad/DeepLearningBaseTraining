@@ -57,7 +57,6 @@ if __name__ == "__main__":
     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = torch.nn.parallel.DistributedDataParallel(model)
 
-
     optimizer = getOptimizer()(model.parameters())
     lrScheduler: _LRScheduler = getLRScheduler(optimizer)
     modelSaver = ModelSaver(model = model, optimizer = optimizer)
