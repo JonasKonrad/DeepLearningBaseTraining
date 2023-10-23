@@ -1,11 +1,12 @@
 import os
 import torch
 import json
+import sys
 
 from models import getModel
 from optimizer import getOptimizer
 from utility.loss import smooth_crossentropy
-from utility.data import DataLoader
+from utility.inputData import DataLoader
 from utility.dataLogger import DataLogger
 from utility.utils import initialize
 from utility.LRScheduler import getLRScheduler, _LRScheduler
@@ -51,7 +52,7 @@ if __name__ == "__main__":
 
     model = getModel()(num_classes=dataset.numClasses)
     model = model.cuda(local_rank)
-    if hasattr(torch, "compile"):
+    if hasattr(torch, "compile") and int(sys.version.split(".")[1]) < 11: #compile not available for python 11 yet
         model = torch.compile(model)
     model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     model = torch.nn.parallel.DistributedDataParallel(model)

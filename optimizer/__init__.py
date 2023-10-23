@@ -19,7 +19,7 @@ optimizerDict = {
 }
 
 
-def getOptimizer() -> torch.nn.Module:
+def getOptimizer() -> torch.optim.Optimizer:
     if Args.optimizer in optimizerDict:
         return optimizerDict[Args.optimizer]
     else:
