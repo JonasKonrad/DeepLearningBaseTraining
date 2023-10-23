@@ -1,10 +1,10 @@
 import configparser
 import argparse as ar
 from typing import Any
-import sys
+import tomllib
 from difflib import get_close_matches
 
-DEFAULTS_FILE_PATH = "utility/defaults.ini"
+DEFAULTS_FILE_PATH = "utility/defaults.toml"
 
 class MetaClass(type):
     def __getattr__(cls, key: str) -> Any:
@@ -47,66 +47,50 @@ class Args(metaclass=MetaClass):
             if action.type is bool:
                 action.type = make_bool
 
-        config = configparser.ConfigParser()
-        config.optionxform = str # make config parse case sensitive
-        out = config.read([DEFAULTS_FILE_PATH])
-        if not out:
-            raise RuntimeError(f"Default file '{DEFAULTS_FILE_PATH}' not found.")
+        with open(DEFAULTS_FILE_PATH, "rb") as f:
+            defaults = tomllib.load(f)
 
-        defaults = {}
-        for sec in config.sections():
-            defaults.update(**dict(config[sec]))
-        cls.set_defaults(defaults, mustExist = True)
+        ## set defaults
+        # check if all defaults are existing
+        for action in cls.parser._actions:
+            if not isinstance(action, ar._HelpAction):
+                if action.dest not in defaults:
+                    raise RuntimeError(f"No default argument given for {action.dest}. Please add to '{DEFAULTS_FILE_PATH}'")
+        # check if all file elements where defined
+        for key in defaults.keys():
+            if key not in [action.dest for action in cls.parser._actions if not isinstance(action, ar._HelpAction)]:
+                raise RuntimeError(f"Parameter {key} were given in default file but not defined before.")
+
+        cls.parser.set_defaults(**defaults)
 
         #only parse input file name
         init_file_name_parser = ar.ArgumentParser(description="Blank Project",add_help=False)
         init_file_name_parser.add_argument("-i", "--ifile", help="input parameter file", metavar="FILE")
         ifile_args, remaining_argv = init_file_name_parser.parse_known_args()
         ifile_path = ifile_args.ifile
-        
-        if ifile_path is not None:
-            out = config.read([ifile_path])
-            if not out:
-                raise RuntimeError(f"Ifile '{ifile_path}' not found.")
-            
-            ifile_arguments = {}
-            for sec in config.sections():
-                ifile_arguments.update(**dict(config[sec]))
-            
-            cls.set_defaults(ifile_arguments)
 
+        if ifile_path is not None:
+            with open(ifile_path, "rb") as f:
+                ifile_arguments = tomllib.load(f)
+
+            # check if all file elements where defined
+            for arg in ifile_arguments.keys():
+                if arg not in [action.dest for action in cls.parser._actions if not isinstance(action, ar._HelpAction)]:
+                    raise RuntimeError(f"Input file argument '{arg}' not found. Did you mean '{get_close_matches(arg, list(cls.parser._defaults.keys()), n = 1, cutoff = 0)[0]}'?")
+
+            cls.parser.set_defaults(**ifile_arguments)
+
+        # parse command line arguments
         cls.data, still_remaining_argv = cls.parser.parse_known_args(remaining_argv)
 
-        # review not-parsed arguments 
-        if still_remaining_argv:
-            possible_arguments = list(cls.parser._defaults.keys())
-            missmatch_string = ""
-            for arg in still_remaining_argv:
-                candidate, = get_close_matches(arg, possible_arguments, n = 1, cutoff = 0)
-                missmatch_string += f"\n{arg[2:]} --> {candidate}"
-            raise RuntimeError(f"Command line arguments '{', '.join(still_remaining_argv)}' not found. Possible missmatches: {missmatch_string}")
-        
+        # check for unrecogniced command line arguments
+        for arg in still_remaining_argv:
+            raise RuntimeError(f"Command line argument '{arg}' not found. Did you mean '{get_close_matches(arg, list(cls.parser._defaults.keys()), n = 1, cutoff = 0)}'?")
 
-    @classmethod
-    def set_defaults(cls, defaults, mustExist = False) -> None:
-        # set defaults
-        default_keys = list(defaults.keys())
+        # if singular values are given for list type arguments in default or ini file, these might not be parsed correctly. thus need to transform those to lists of single elements. 
         for action in cls.parser._actions:
-            if not isinstance(action, ar._HelpAction):
-                if mustExist and action.dest not in defaults:
-                    raise RuntimeError(f"No default argument given for {action.dest}. Please add to '{DEFAULTS_FILE_PATH}'")
-                
-                if action.nargs == "*":
-                    # split lists seperated by whitespace in defaults file
-                    defaults[action.dest] = defaults[action.dest].split(" ") if defaults[action.dest] else []
-
-                default_keys.remove(action.dest)
-
-        if default_keys:
-            raise RuntimeError(f"Parameter(s) {default_keys} were given in input file but not defined before.")
-        
-        cls.parser.set_defaults(**defaults)
-        
+            if action.nargs == "*" and not isinstance(getattr(cls.data, action.dest), list):
+                setattr(cls.data, action.dest, [getattr(cls.data, action.dest), ])
 
     @classmethod
     def parse_args_contin(cls, defaults: dict) -> None:

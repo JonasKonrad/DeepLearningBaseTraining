@@ -1,60 +1,57 @@
-[general]
-logDir = ../logs
-logSubDir = test
-truncate = False
+logDir = "../logs"
+logSubDir = "test"
+truncate = false
 
-contin = False
+contin = false
 epochs = 200
 
-rndSeed = False
-deterministic = False
+rndSeed = false
+deterministic = false
 
-optimizer = SGD
+optimizer = "SGD"
 momentum = 0.9 
 weightDecay = 0.0005
-nesterov = False
+nesterov = false
 
-saveCheckpoint = False
-keepLastCheckpoint = False
-checkpointsList = 
+saveCheckpoint = false
+keepLastCheckpoint = false
+checkpointsList = []
 saveCheckpointInterval = 0
 
-verbose = False
+verbose = false
 logEach = 1
-metrics = learningRate loss accuracy
+metrics = ["learningRate", "loss", "accuracy"]
 
 dataThreads = 6 
-dataDir = ~/.datasets
+dataDir = "~/.datasets"
 batchSize = 256 
-dataset = CIFAR100 
+dataset = "CIFAR100" 
 imageSize = 0 
-flip = True 
-crop = True
-cut = True
+flip = true 
+crop = true
+cut = true
 cutoutProp = 0.5
-randAugment = False 
+randAugment = false 
 randAugment_magnitude = 10
-mixup = False
+mixup = false
 mixupProp = 0.2
 
 label_smoothing = 0.1
 
 grad_clip_norm = 0.0
-normalize = std
+normalize = "std"
 
 
-[models]
-model = WRN
+model = "WRN"
 dropout = 0.0
-BN = True
+BN = true
 depth = 16
 widthFactor = 4
 ViTPatchsize = 32
-ViTSize = S
+ViTSize = "S"
 
-[learning rate]
 learningRate = 0.5
-lrScheduler = startRamp cos
+lrScheduler = ["startRamp", "cos"]
 
 LRScheduler_StartRamp_epochs = 1
 

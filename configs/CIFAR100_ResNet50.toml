@@ -1,0 +1,6 @@
+weightDecay = 0.001
+
+model = "resnetCIFAR"
+depth = 50
+
+learningRate = 0.1

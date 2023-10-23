@@ -1,18 +1,15 @@
 #HPs from SAM paper (except BS=4096)
-[general]
 epochs = 100
 weightDecay = 0.0001
 
 batchSize = 1024
-dataset = ImageNet 
+dataset = "ImageNet" 
 imageSize = 224
-flip = True 
-crop = False
-cut = False
+flip = true 
+crop = false
+cut = false
 
-[models]
-model = resnet
+model = "resnet"
 depth = 50
 
-[learning rate]
 learningRate = 1.0
