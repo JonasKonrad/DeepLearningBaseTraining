@@ -14,22 +14,23 @@ class Args(metaclass=MetaClass):
     """
     Argument parsing used from default argpase module. Changes:
         - defaults are not allowed in source code
-        - a default value must be provided for each argument in the input file
+        - a default value must be provided for each argument in the default file (see DEFAULTS_FILE_PATH)
         - bool args are handeled as follows:
             -> --arg --> True
             -> --arg True --> True
             -> --arg False --> False
             -> (not given) --> default from ini file
+        - list arguments (nargs="*") can be added/removed by parsing '--NAME+ a,b,c' or '--NAME- d,e'
     """
     data: ar.Namespace = None
     parser = ar.ArgumentParser()
-    
+
     @classmethod
     def get(cls, key: str) -> Any:
         if cls.data is None:
             raise RuntimeError(f"Arguments were not parsed yet.")
         return getattr(cls.data, key)
-    
+
     @classmethod
     def add_argument(cls, *args, **kwargs) -> None:
         if "default" in kwargs:
@@ -39,7 +40,7 @@ class Args(metaclass=MetaClass):
                 kwargs["nargs"] = "?"
                 kwargs["const"] = True
         cls.parser.add_argument(*args, **kwargs)
-    
+
     @classmethod
     def parse_args(cls) -> None:
         # replace constructor class for bool type arguments with custom function
@@ -81,16 +82,55 @@ class Args(metaclass=MetaClass):
             cls.parser.set_defaults(**ifile_arguments)
 
         # parse command line arguments
-        cls.data, still_remaining_argv = cls.parser.parse_known_args(remaining_argv)
-
-        # check for unrecogniced command line arguments
-        for arg in still_remaining_argv:
-            raise RuntimeError(f"Command line argument '{arg}' not found. Did you mean '{get_close_matches(arg, list(cls.parser._defaults.keys()), n = 1, cutoff = 0)}'?")
+        cls.data, remaining_argv = cls.parser.parse_known_args(remaining_argv)
 
         # if singular values are given for list type arguments in default or ini file, these might not be parsed correctly. thus need to transform those to lists of single elements. 
         for action in cls.parser._actions:
             if action.nargs == "*" and not isinstance(getattr(cls.data, action.dest), list):
                 setattr(cls.data, action.dest, [getattr(cls.data, action.dest), ])
+
+        # parse add/remove arguments for lists
+        remaining_argv = cls.parse_special_list_args(remaining_argv)
+
+        # check for unrecogniced command line arguments
+        for arg in remaining_argv:
+            raise RuntimeError(f"Command line argument '{arg}' not found. Did you mean '{get_close_matches(arg, list(cls.parser._defaults.keys()), n = 1, cutoff = 0)[0]}'?")
+
+    @classmethod
+    def parse_special_list_args(cls, argsv: list) -> None:
+        """ function allowing to add or remove entries from list arguments by parsing '--NAME+ a,b,c' or '--NAME- d,e'"""
+        i = 0
+        while i < len(argsv):
+            if argsv[i].endswith('+'):
+                add = True
+            elif argsv[i].endswith('-'):
+                add = False
+            else:
+                i += 1
+                continue
+
+            name = argsv[i][2:-1]
+            values = argsv[i+1].split(",")
+
+            # find action
+            for action in cls.parser._actions:
+                if action.dest == name:
+                    break
+            else:
+                raise RuntimeError(f"Action not found for arg '{argsv[i]}'")
+
+            if action.nargs != "*":
+                raise RuntimeError(f"add/sub not allowed for non list option '{argsv[i]}'")
+            
+            for val in values:
+                if add:
+                    getattr(cls.data, name).append(action.type(val))
+                else: #remove
+                    getattr(cls.data, name).remove(action.type(val))
+            
+            del argsv[i+1]
+            del argsv[i]
+        return argsv
 
     @classmethod
     def parse_args_contin(cls, defaults: dict) -> None:
@@ -103,8 +143,6 @@ class Args(metaclass=MetaClass):
         _, remaining_argv = init_file_name_parser.parse_known_args()
         
         cls.data = cls.parser.parse_args(remaining_argv)
-
-
 
 def make_bool(arg: Any) -> bool:
     if isinstance(arg, str):
