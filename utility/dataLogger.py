@@ -35,7 +35,7 @@ class DataLogger:
                 if self.metrics[-1].logTest:
                     self.printTestMetrics.append(self.metrics[-1])
             else:
-                raise RuntimeError(f"Metric {metricName} not found. Available metrics: {', '.join(available_metrics.keys())}")
+                raise RuntimeError(f"Metric '{metricName}' not found. Available metrics: {', '.join(available_metrics.keys())}.")
 
         self.loading_bar = LoadingBar(length=(self.columnLen+1)*len(self.printTestMetrics)-3)
 
@@ -91,7 +91,7 @@ class DataLogger:
                         metric.flushData(file, mode = "train" if self.train else "test")
                     if not self.train and metric.logTest:
                         metric.flushData(file, mode = "train" if self.train else "test")
-            
+
 
     def printTerminal(self) -> None:
         """ print to terminal """
