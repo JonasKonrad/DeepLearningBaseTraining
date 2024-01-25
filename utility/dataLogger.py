@@ -32,7 +32,7 @@ class DataLogger:
                 self.metrics.append(available_metrics[metricName]())
                 if self.metrics[-1].printTrain:
                     self.printTrainMetrics.append(self.metrics[-1])
-                if self.metrics[-1].logTest:
+                if self.metrics[-1].printTest:
                     self.printTestMetrics.append(self.metrics[-1])
             else:
                 raise RuntimeError(f"Metric '{metricName}' not found. Available metrics: {', '.join(available_metrics.keys())}.")
