@@ -23,6 +23,7 @@ class DataLogger:
         self.epoch = 0
         self.train = True
         self.trainDataLen = None
+        self.trainString = ""
 
         self.metrics: list[BaseMetric] = []
         self.printTrainMetrics: list[BaseMetric] = []
@@ -85,13 +86,18 @@ class DataLogger:
             self.printTerminal()
             if not self.train:
                 print()
-            with h5py.File(self.filePath, "r+") as file:
-                for metric in self.metrics:
-                    if self.train and metric.logTrain:
-                        metric.flushData(file, mode = "train" if self.train else "test")
-                    if not self.train and metric.logTest:
-                        metric.flushData(file, mode = "train" if self.train else "test")
-
+            while True:
+                try:
+                    with h5py.File(self.filePath, "r+") as file:
+                        for metric in self.metrics:
+                            if self.train and metric.logTrain:
+                                metric.flushData(file, mode = "train" if self.train else "test")
+                            if not self.train and metric.logTest:
+                                metric.flushData(file, mode = "train" if self.train else "test")
+                    break
+                except BlockingIOError:
+                    print("Data File is blocked, can't open! Trying again in 10 sec...")
+                    time.sleep(10)
 
     def printTerminal(self) -> None:
         """ print to terminal """
