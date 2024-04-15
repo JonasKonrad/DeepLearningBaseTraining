@@ -29,24 +29,25 @@ class ImageNet(torchvision.datasets.ImageFolder):
     def __init__(self, root, train = True, download = None, transform = []):
         self.train = train
         if train:
-            dir = os.path.join(root, "ImageNet", 'train')
+            dir_ = os.path.join(root, "ImageNet", 'train')
             transform.transforms = [
                 transforms.RandomResizedCrop(Args.imageSize if Args.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
                 ] + transform.transforms
         else:
-            dir = os.path.join(root, "ImageNet", 'val')
+            dir_ = os.path.join(root, "ImageNet", 'val')
             transform.transforms = [
                 CenterCrop(),
                 ] + transform.transforms
 
-        super(ImageNet, self).__init__(dir, transform = transform)
+        super(ImageNet, self).__init__(dir_, transform = transform)
 
-# name, numClasses
+# name, [dataSetClass, numClasses]
 availableDatasets = {
     "ImageNet": [ImageNet, 1000],
     "CIFAR10" : [torchvision.datasets.CIFAR10 , 10],
     "CIFAR100": [torchvision.datasets.CIFAR100, 100],
 }
+# [mean_r, mean_g, mean_b], [std_r, std_g, std_b]
 dataSetStatistics = {
     "ImageNet": [[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]],
     "CIFAR10" : [[0.4913999140262604, 0.48215872049331665, 0.4465313255786896], [0.24703197181224823, 0.243484228849411, 0.26158687472343445]],
