@@ -1,3 +1,4 @@
+import time
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -6,9 +7,9 @@ import numpy as np
 import random
 import warnings
 
-from .augmentation import Cutout
+from utility.augmentation import Cutout
 from utility.args import Args
-
+from utility.tarDataset import TarImageFolder
 
 Args.add_argument("--dataThreads", type=int, help="Number of CPU threads for dataloaders.")
 Args.add_argument("--dataDir", type=str, help="main directory to store datasets")
@@ -25,25 +26,37 @@ Args.add_argument("--mixup", type=bool, help="")
 Args.add_argument("--mixupProp", type=float, help="")
 Args.add_argument("--normalize", type=str, help="std or min_max")
 
-class ImageNet(torchvision.datasets.ImageFolder):
-    def __init__(self, root, train = True, download = None, transform = []):
-        self.train = train
-        if train:
-            dir_ = os.path.join(root, "ImageNet", 'train')
-            transform.transforms = [
-                transforms.RandomResizedCrop(Args.imageSize if Args.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
-                ] + transform.transforms
-        else:
-            dir_ = os.path.join(root, "ImageNet", 'val')
-            transform.transforms = [
-                CenterCrop(),
-                ] + transform.transforms
 
-        super(ImageNet, self).__init__(dir_, transform = transform)
+def getImageNet(root, *args, **kwargs):
+    # first try to find tar archive:
+    if os.path.isfile(os.path.join(root, "ImageNet", 'imagenet.tar')):
+        tar = True
+        print("Reading ImageNet from tar archive...")
+    else:
+        tar = False
+        print("Reading ImageNet from folder...")
+
+    class ImageNet(TarImageFolder if tar else torchvision.datasets.ImageFolder):
+        def __init__(self, root, train = True, download = None, transform = []):
+            self.train = train
+            if train:
+                transform.transforms = [
+                    transforms.RandomResizedCrop(Args.imageSize if Args.imageSize is not None else 224, scale=(0.08, 1.0), ratio=(3. / 4, 4. / 3.))
+                    ] + transform.transforms
+            else:
+                transform.transforms = [
+                    CenterCrop(),
+                    ] + transform.transforms
+
+            if tar:
+                super(ImageNet, self).__init__(archive = os.path.join(root, "ImageNet", 'imagenet.tar'), transform = transform, root_in_archive = "ImageNet/" + ("train" if train else "val"))
+            else:
+                super(ImageNet, self).__init__(os.path.join(root, "ImageNet", 'train' if train else 'val'), transform = transform)
+    return ImageNet(root=root, *args, **kwargs)
 
 # name, [dataSetClass, numClasses]
 availableDatasets = {
-    "ImageNet": [ImageNet, 1000],
+    "ImageNet": [getImageNet, 1000],
     "CIFAR10" : [torchvision.datasets.CIFAR10 , 10],
     "CIFAR100": [torchvision.datasets.CIFAR100, 100],
 }
