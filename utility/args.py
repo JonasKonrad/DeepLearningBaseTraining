@@ -1,4 +1,4 @@
-import configparser
+import os
 import argparse as ar
 from typing import Any
 import tomllib
@@ -95,6 +95,11 @@ class Args(metaclass=MetaClass):
         # check for unrecogniced command line arguments
         for arg in remaining_argv:
             raise RuntimeError(f"Command line argument '{arg}' not found. Did you mean '{get_close_matches(arg, list(cls.parser._defaults.keys()), n = 1, cutoff = 0)[0]}'?")
+
+        # expand possibly occurring "~" in path arguments. @TODO make this not manually for each path argument?! 
+        cls.data.dataDir = os.path.expanduser(cls.data.dataDir)
+        cls.data.logSubDir = os.path.expanduser(cls.data.logSubDir)
+        cls.data.logDir = os.path.expanduser(cls.data.logDir)
 
     @classmethod
     def parse_special_list_args(cls, argsv: list) -> None:
