@@ -45,4 +45,4 @@ module purge
 module load palma/2022a  GCCcore/11.3.0
 module load Python/3.10.4
 
-srun --export=ALL python3 main.py --rndSeed --logSubDir test  --dataThreads 7 --dataDir /scratch/tmp/m_beck52/data
+srun --export=ALL python3 main.py --rndSeed --dataDir /scratch/tmp/m_beck52/data --dataThreads $((SLURM_CPUS_PER_TASK-1)) $@
