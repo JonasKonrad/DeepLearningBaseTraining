@@ -119,10 +119,10 @@ class DataLogger:
 
     def printHeader(self) -> None:
         if torch.distributed.get_rank() == 0:
-            print(f"┏━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳{'T╺╸R╺╸A╺╸I╺╸N '.center((self.columnLen+1)*len(self.printTrainMetrics)-1,'━')}┳{'T╺╸E╺╸S╺╸T '.center((self.columnLen+1)*len(self.printTestMetrics)-1,'━')}┓")
-            print(f"┃                             ┃{' '*((self.columnLen+1)*len(self.printTrainMetrics)-1)}┃{' '*((self.columnLen+1)*len(self.printTestMetrics)-1)}┃")
-            print(f"┃    epoch     │     time     ┃{'│'.join([metric.name[:self.columnLen].center(self.columnLen) for metric in self.printTrainMetrics])}┃{'│'.join([metric.name[:self.columnLen].center(self.columnLen) for metric in self.printTestMetrics])}┃")
-            print(f"┠──────────────┼──────────────╂{'┼'.join(['─'*self.columnLen]*len(self.printTrainMetrics))}╂{'┼'.join(['─'*self.columnLen]*len(self.printTestMetrics))}┨")
+            print(f"┏{'S╺╸T╺╸A╺╸T╺╸S'.center(self.columnLen * 2 - 1, '━')}┳{'T╺╸R╺╸A╺╸I╺╸N '.center((self.columnLen + 1) * len(self.printTrainMetrics) - 1, '━')}┳{'T╺╸E╺╸S╺╸T '.center((self.columnLen + 1) * len(self.printTestMetrics) - 1, '━')}┓")
+            print(f"┃{' ' * (self.columnLen * 2 - 1)}┃{' ' * ((self.columnLen + 1) * len(self.printTrainMetrics) - 1)}┃{' ' * ((self.columnLen + 1) * len(self.printTestMetrics) - 1)}┃")
+            print(f"┃{'│'.join([s.center(self.columnLen - 1) for s in ['epoch', 'time']])}┃{'│'.join([metric.name[:self.columnLen].center(self.columnLen) for metric in self.printTrainMetrics])}┃{'│'.join([metric.name[:self.columnLen].center(self.columnLen) for metric in self.printTestMetrics])}┃")
+            print(f"┠{'┼'.join(['─' * (self.columnLen - 1)] * 2)}╂{'┼'.join(['─' * self.columnLen] * len(self.printTrainMetrics))}╂{'┼'.join(['─' * self.columnLen] * len(self.printTestMetrics))}┨")
 
 class LoadingBar:
     def __init__(self, length: int = 40):
