@@ -124,3 +124,6 @@ if __name__ == "__main__":
 
             dataLogger.flush()
             modelSaver(epoch)
+
+    dataLogger.printFooter()
+    torch.distributed.destroy_process_group()
